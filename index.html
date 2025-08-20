@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EV Car Showcase</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-content {
+            background-color: #fff;
+            margin: auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 800px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+            transform: scale(0.95);
+            transition: transform 0.2s ease-out;
+        }
+        .modal.open .modal-content {
+            transform: scale(1);
+        }
+        .close-button {
+            color: #aaa;
+            position: absolute;
+            top: 15px;
+            right: 25px;
+            font-size: 30px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .close-button:hover,
+        .close-button:focus {
+            color: #333;
+            text-decoration: none;
+        }
+        .car-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .car-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .action-btn {
+            background-image: linear-gradient(to right, #6366f1, #8b5cf6);
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+            border: none; /* Ensure no default button border */
+        }
+        .action-btn:hover {
+            background-image: linear-gradient(to right, #8b5cf6, #6366f1);
+            box-shadow: 0 6px 15px rgba(139, 92, 246, 0.4);
+            transform: translateY(-2px);
+        }
+        .action-btn:disabled {
+            background-image: none;
+            background-color: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+        .compare-btn.selected {
+            background-image: linear-gradient(to right, #22c55e, #16a34a);
+            box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3);
+        }
+        .compare-btn.selected:hover {
+            background-image: linear-gradient(to right, #16a34a, #22c55e);
+        }
+
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #6366f1;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            display: none; /* Hidden by default */
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center py-10 px-4">
+
+    <h1 class="text-4xl font-bold text-gray-800 mb-10 text-center">Explore the Latest EV Cars (2025 Models)</h1>
+
+    <!-- AI Tools Section -->
+    <div class="bg-white p-6 rounded-xl shadow-lg mb-10 w-full max-w-2xl">
+        <h2 class="text-2xl font-semibold text-gray-700 mb-4">AI Tools for EV Exploration</h2>
+
+        <!-- Image Generation Section -->
+        <div class="mb-8 p-4 border border-gray-200 rounded-lg">
+            <h3 class="text-xl font-medium text-gray-700 mb-3">Generate Car Images ✨</h3>
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <input type="text" id="imagePrompt" placeholder="Describe the car image you want (e.g., 'futuristic blue sedan')"
+                       class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button id="generateImageBtn"
+                        class="action-btn text-white font-semibold py-3 px-6 rounded-lg shadow-md">
+                    Generate Image
+                </button>
+            </div>
+            <div id="imageGenerationResult" class="mt-4 flex justify-center items-center">
+                <div id="imageLoadingSpinner" class="loading-spinner"></div>
+                <img id="generatedImage" src="" alt="Generated Car Image" class="hidden rounded-lg max-w-full h-auto shadow-md">
+                <p id="imageError" class="text-red-500 hidden mt-2 text-center"></p>
+            </div>
+            <p class="text-sm text-gray-500 mt-4 text-center">
+                You can use this to generate a specific car image based on your prompt.
+                Replace the placeholder images in the code with generated ones if you wish!
+            </p>
+        </div>
+
+        <!-- Car Comparison Section -->
+        <div class="mb-8 p-4 border border-gray-200 rounded-lg">
+            <h3 class="text-xl font-medium text-gray-700 mb-3">Compare Selected Cars ✨</h3>
+            <div class="flex flex-wrap items-center gap-2 mb-4">
+                <p id="selectedCarsDisplay" class="text-gray-600 text-sm italic flex-grow">Select up to 2 cars to compare.</p>
+                <button id="compareCarsBtn" disabled
+                        class="action-btn text-white font-semibold py-2 px-5 rounded-lg shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                    Compare Selected
+                </button>
+                <button id="clearComparisonBtn" disabled
+                        class="bg-gray-400 text-white font-semibold py-2 px-3 rounded-lg shadow-md hover:bg-gray-500 transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed">
+                    Clear
+                </button>
+            </div>
+            <div id="comparisonLoadingSpinner" class="loading-spinner"></div>
+            <p id="comparisonError" class="text-red-500 hidden mt-2 text-center"></p>
+            <p class="text-sm text-gray-500 mt-4 text-center">
+                Click "Compare" on two car cards below, then click "Compare Selected" here to get an AI-generated comparison.
+            </p>
+        </div>
+
+        <!-- Ask the EV AI Section -->
+        <div class="p-4 border border-gray-200 rounded-lg">
+            <h3 class="text-xl font-medium text-gray-700 mb-3">Ask the EV AI ✨</h3>
+            <div class="flex flex-col sm:flex-row gap-4 mb-4">
+                <input type="text" id="aiQuestionInput" placeholder="Ask anything about EVs (e.g., 'What are the benefits of owning an EV?')"
+                       class="flex-grow p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <button id="askAiBtn"
+                        class="action-btn text-white font-semibold py-3 px-6 rounded-lg shadow-md">
+                    Ask AI
+                </button>
+            </div>
+            <div id="aiResponseContainer" class="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 text-gray-700 hidden">
+                <div id="aiLoadingSpinner" class="loading-spinner"></div>
+                <p id="aiResponseText" class="text-base"></p>
+                <p id="aiError" class="text-red-500 hidden mt-2 text-center"></p>
+            </div>
+            <p class="text-sm text-gray-500 mt-4 text-center">
+                Get general information and insights about electric vehicles from the AI.
+            </p>
+        </div>
+    </div>
+
+    <div id="carListings" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8 w-full max-w-6xl">
+        <!-- Car cards will be dynamically inserted here by JavaScript -->
+    </div>
+
+    <!-- Modal Pop-up for Car Details / Comparison / AI Response -->
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <div id="modalContent" class="text-gray-700">
+                <!-- Detailed car information or comparison results will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Dummy data for 50 EV cars (real data would come from a database or API)
+        const evCars = [
+            {
+                id: '1',
+                name: 'Tesla Model 3',
+                image: 'https://placehold.co/400x250/f0f9ff/334155?text=Tesla+Model+3',
+                shortDescription: 'The popular electric sedan known for its performance and extensive Supercharger network.',
+                longDescription: 'The Tesla Model 3 offers an impressive blend of range, performance, and technology. It features a minimalist interior with a large central touchscreen, advanced autopilot capabilities, and access to Tesla\'s proprietary Supercharger network, making long-distance travel convenient. Multiple variants are available, including Standard Range, Long Range, and Performance models, each offering different range and acceleration figures. It\'s a strong contender for those seeking a modern, tech-forward EV.',
+                range: '550 km (WLTP)',
+                battery: '75 kWh',
+                power: '283 hp (RWD Long Range)',
+                charging: 'AC: 11 kW (8-10 hrs), DC Fast Charge: 250 kW (15-80% in ~20 mins)',
+                price: '€44,990'
+            },
+            {
+                id: '2',
+                name: 'Hyundai Ioniq 5',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=Hyundai+Ioniq+5',
+                shortDescription: 'A retro-futuristic crossover with ultra-fast charging and spacious interior.',
+                longDescription: 'The Hyundai Ioniq 5 stands out with its unique pixelated design and a spacious, lounge-like interior. Built on the E-GMP platform, it offers 800V ultra-fast charging capabilities, allowing for rapid battery top-ups. It provides a comfortable ride and features Vehicle-to-Load (V2L) functionality, enabling users to power external devices. Available in various configurations, including rear-wheel drive and all-wheel drive, offering different power outputs and ranges. Its innovative design and practicality make it a highly desirable EV.',
+                range: '480 km (WLTP)',
+                battery: '77.4 kWh',
+                power: '225 hp (RWD), 320 hp (AWD)',
+                charging: 'AC: 11 kW (7-8 hrs), DC Fast Charge: 350 kW (10-80% in ~18 mins)',
+                price: '€45,990'
+            },
+            {
+                id: '3',
+                name: 'Kia EV6',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=Kia+EV6',
+                shortDescription: 'A sporty and dynamic electric crossover with impressive range and performance.',
+                longDescription: 'The Kia EV6 shares its E-GMP platform with the Ioniq 5 but boasts a sportier, more aggressive design. It delivers engaging driving dynamics and impressive acceleration, especially in its GT line and GT variants. Like the Ioniq 5, it supports 800V ultra-fast charging and includes V2L functionality. The interior is driver-focused, with dual curved displays and sustainable materials. It\'s an excellent choice for those seeking a stylish and performance-oriented electric vehicle with practical usability.',
+                range: '500 km (WLTP)',
+                battery: '77.4 kWh',
+                power: '225 hp (RWD), 321 hp (AWD), 576 hp (GT)',
+                charging: 'AC: 11 kW (7-8 hrs), DC Fast Charge: 350 kW (10-80% in ~18 mins)',
+                price: '€47,990'
+            },
+            {
+                id: '4',
+                name: 'Ford Mustang Mach-E',
+                image: 'https://placehold.co/400x250/f0fdf4/047857?text=Mustang+Mach-E',
+                shortDescription: 'An iconic nameplate reborn as a performance-oriented electric SUV.',
+                longDescription: 'The Ford Mustang Mach-E blends the spirit of the iconic Mustang with modern electric vehicle technology. It offers a spirited driving experience, a spacious and comfortable interior, and an intuitive infotainment system. Available in various models, including RWD, AWD, and the high-performance GT, it caters to different needs and preferences. The Mach-E represents Ford\'s commitment to electrification while retaining a connection to its performance heritage.',
+                range: '500 km (WLTP)',
+                battery: '72 kWh or 91 kWh',
+                power: '266 hp - 480 hp',
+                charging: 'AC: 11 kW (8-10 hrs), DC Fast Charge: 150 kW (10-80% in ~45 mins)',
+                price: '€54,990'
+            },
+            {
+                id: '5',
+                name: 'Volkswagen ID.4',
+                image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=VW+ID.4',
+                shortDescription: 'A practical and spacious electric SUV for the family.',
+                longDescription: 'The Volkswagen ID.4 is designed to be a mass-market electric SUV, offering practicality, comfort, and a good balance of range and features. It provides a spacious interior with ample cargo room, making it suitable for families. The ID.4 focuses on user-friendliness with its minimalist cabin design and digital interfaces. It\'s available in both rear-wheel drive and all-wheel drive configurations, providing options for different driving conditions. The ID.4 is a strong entry in the growing electric SUV segment.',
+                range: '450 km (WLTP)',
+                battery: '77 kWh',
+                power: '201 hp (RWD), 295 hp (AWD)',
+                charging: 'AC: 11 kW (7-8 hrs), DC Fast Charge: 135 kW (10-80% in ~38 mins)',
+                price: '€40,990'
+            },
+            {
+                id: '6',
+                name: 'BMW iX',
+                image: 'https://placehold.co/400x250/eef2ff/4338ca?text=BMW+iX',
+                shortDescription: 'A luxurious and technologically advanced electric SUV from BMW.',
+                longDescription: 'The BMW iX is a bold statement in the electric luxury SUV segment, featuring a distinctive design, a sustainable interior crafted with recycled materials, and cutting-edge technology. It offers a highly comfortable and quiet ride, combined with powerful electric powertrains. The iX boasts BMW\'s latest iDrive infotainment system and advanced driver-assistance features. It\'s aimed at buyers who desire a high-end electric SUV with a strong emphasis on luxury, innovation, and environmental consciousness.',
+                range: '630 km (WLTP)',
+                battery: '111.5 kWh',
+                power: '322 hp (xDrive40) - 610 hp (M60)',
+                charging: 'AC: 11 kW (10-11 hrs), DC Fast Charge: 200 kW (10-80% in ~35 mins)',
+                price: '€80,000'
+            },
+            {
+                id: '7',
+                name: 'Mercedes-Benz EQS',
+                image: 'https://placehold.co/400x250/f0f9ff/0c4a6e?text=MB+EQS',
+                shortDescription: 'The flagship electric luxury sedan, redefining comfort and technology.',
+                longDescription: 'The Mercedes-Benz EQS is the electric equivalent of the S-Class, setting new benchmarks for luxury, technology, and aerodynamic efficiency in the EV space. Its most striking feature is the optional MBUX Hyperscreen, a massive, curved display unit spanning the entire dashboard. The EQS offers an exceptionally smooth, quiet, and refined ride, coupled with powerful electric motors. It integrates advanced driver-assistance systems and a highly sophisticated infotainment experience, truly representing the pinnacle of electric luxury.',
+                range: '770 km (WLTP)',
+                battery: '107.8 kWh',
+                power: '329 hp (EQS 450+) - 751 hp (AMG EQS 53)',
+                charging: 'AC: 11 kW (10 hrs), DC Fast Charge: 200 kW (10-80% in ~31 mins)',
+                price: '€100,000'
+            },
+            {
+                id: '8',
+                name: 'Porsche Taycan',
+                image: 'https://placehold.co/400x250/f8fdf8/0a0a0a?text=Porsche+Taycan',
+                shortDescription: 'A high-performance electric sports sedan with stunning dynamics.',
+                longDescription: 'The Porsche Taycan is a groundbreaking electric sports car that delivers exhilarating performance and handling synonymous with the Porsche brand. It features a sleek, aerodynamic design and a driver-focused interior with multiple digital displays. The Taycan offers rapid acceleration and impressive cornering capabilities, making it a joy to drive. Its 800V architecture enables ultra-fast charging, minimizing downtime. Available in various body styles, including sedan, Sport Turismo, and Cross Turismo, catering to different preferences.',
+                range: '450 km (WLTP)',
+                battery: '79.2 kWh or 93.4 kWh',
+                power: '402 hp - 750 hp',
+                charging: 'AC: 11 kW (8-9 hrs), DC Fast Charge: 270 kW (5-80% in ~22 mins)',
+                price: '€90,000'
+            },
+            {
+                id: '9',
+                name: 'Audi e-tron GT',
+                image: 'https://placehold.co/400x250/ffe4e6/be123c?text=Audi+e-tron+GT',
+                shortDescription: 'A sleek and sporty electric grand tourer from Audi.',
+                longDescription: 'The Audi e-tron GT is a visually striking electric grand tourer that shares its J1 platform with the Porsche Taycan. It boasts a low-slung, aggressive design and a luxurious, tech-laden interior. Performance is a key highlight, with quick acceleration and refined handling. The e-tron GT features quattro all-wheel drive and supports ultra-fast 800V charging. It offers a compelling package for those seeking a high-performance electric vehicle with Audi\'s signature design and quality.',
+                range: '480 km (WLTP)',
+                battery: '93.4 kWh',
+                power: '469 hp (e-tron GT) - 637 hp (RS e-tron GT)',
+                charging: 'AC: 11 kW (9-10 hrs), DC Fast Charge: 270 kW (5-80% in ~22 mins)',
+                price: '€99,800'
+            },
+            {
+                id: '10',
+                name: 'Nissan Ariya',
+                image: 'https://placehold.co/400x250/fff7ed/b45309?text=Nissan+Ariya',
+                shortDescription: 'Nissan\'s modern electric crossover with a lounge-like interior.',
+                longDescription: 'The Nissan Ariya is a stylish and technologically advanced electric crossover that showcases Nissan\'s evolution in the EV space. It features a sleek, minimalist exterior and a spacious, open-plan interior designed for comfort. The Ariya offers a smooth and quiet ride, along with a suite of ProPILOT Assist driver-assistance technologies. Available in various battery and powertrain configurations, it aims to provide a versatile and appealing option for a broad range of EV buyers.',
+                range: '500 km (WLTP)',
+                battery: '63 kWh or 87 kWh',
+                power: '214 hp - 389 hp',
+                charging: 'AC: 7.4 kW (10-14 hrs), DC Fast Charge: 130 kW (20-80% in ~40 mins)',
+                price: '€47,500'
+            },
+            {
+                id: '11',
+                name: 'Polestar 2',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Polestar+2',
+                shortDescription: 'A minimalist and performance-focused electric fastback from Volvo\'s sub-brand.',
+                longDescription: 'The Polestar 2 is a stylish and performance-oriented electric fastback, combining Scandinavian design with sustainable materials. It offers an engaging driving experience with sharp handling and strong acceleration, especially in the dual-motor variants. The car features an Android Automotive OS-powered infotainment system with Google services built-in. Polestar focuses on sustainability and digital integration, making the Polestar 2 a compelling choice for those seeking a unique and tech-savvy EV.',
+                range: '540 km (WLTP)',
+                battery: '69 kWh or 82 kWh',
+                power: '228 hp - 476 hp',
+                charging: 'AC: 11 kW (7-8 hrs), DC Fast Charge: 205 kW (10-80% in ~28 mins)',
+                price: '€49,900'
+            },
+            {
+                id: '12',
+                name: 'BMW i4',
+                image: 'https://placehold.co/400x250/fff7ed/ea580c?text=BMW+i4',
+                shortDescription: 'The electric Gran Coupé offering a blend of sportiness and luxury.',
+                longDescription: 'The BMW i4 brings BMW\'s renowned driving dynamics to the electric vehicle segment in a sleek Gran Coupé body style. It offers a premium interior with high-quality materials and BMW\'s latest iDrive 8 infotainment system. The i4 provides a comfortable ride for daily commuting yet is capable of spirited performance, particularly in its M50 variant. It\'s a strong competitor for those looking for an electric car that still feels like a true BMW, combining luxury, technology, and driving pleasure.',
+                range: '590 km (WLTP)',
+                battery: '83.9 kWh',
+                power: '335 hp (eDrive40) - 536 hp (M50)',
+                charging: 'AC: 11 kW (8-9 hrs), DC Fast Charge: 200 kW (10-80% in ~31 mins)',
+                price: '€59,000'
+            },
+            {
+                id: '13',
+                name: 'Mercedes-Benz EQE',
+                image: 'https://placehold.co/400x250/f5f5f5/57534e?text=MB+EQE',
+                shortDescription: 'A mid-size electric luxury sedan with a focus on refinement.',
+                longDescription: 'The Mercedes-Benz EQE is a sophisticated electric sedan that slots below the EQS, offering a blend of luxury, technology, and refinement in a slightly more compact package. It boasts a highly aerodynamic design, contributing to its efficient range. The interior is a showcase of Mercedes-Benz\'s MBUX infotainment system, with the optional Hyperscreen adding a futuristic touch. The EQE provides a smooth and quiet ride, emphasizing comfort and a premium driving experience.',
+                range: '660 km (WLTP)',
+                battery: '90.6 kWh',
+                power: '288 hp (EQE 350+) - 617 hp (AMG EQE 43)',
+                charging: 'AC: 11 kW (8-9 hrs), DC Fast Charge: 170 kW (10-80% in ~32 mins)',
+                price: '€70,000'
+            },
+            {
+                id: '14',
+                name: 'BMW iX1',
+                image: 'https://placehold.co/400x250/f0f9ff/164e63?text=BMW+iX1',
+                shortDescription: 'The compact electric SUV from BMW, offering practicality and efficiency.',
+                longDescription: 'The BMW iX1 is the all-electric version of the X1 compact SUV, providing a blend of versatility, efficiency, and premium features. It offers a practical and well-appointed interior, suitable for urban driving and smaller families. The iX1 delivers a comfortable ride and agile handling. It\'s a strong entry-level luxury EV SUV, appealing to those who desire a BMW experience with zero emissions and a focus on everyday usability.',
+                range: '440 km (WLTP)',
+                battery: '64.7 kWh',
+                power: '313 hp (xDrive30)',
+                charging: 'AC: 11 kW (6.5 hrs), DC Fast Charge: 130 kW (10-80% in ~29 mins)',
+                price: '€55,000'
+            },
+            {
+                id: '15',
+                name: 'Audi Q8 e-tron',
+                image: 'https://placehold.co/400x250/e0f2fe/075985?text=Audi+Q8+e-tron',
+                shortDescription: 'The updated and renamed electric SUV, offering improved range and efficiency.',
+                longDescription: 'Formerly known as the e-tron, the Audi Q8 e-tron features a refreshed design and significantly improved range and charging performance. It maintains its reputation for a refined and comfortable ride, a luxurious interior, and advanced technology. Available in SUV and Sportback body styles, the Q8 e-tron offers ample space and quattro all-wheel drive. It\'s designed to be a premium electric SUV for those who prioritize comfort, quality, and a long driving range.',
+                range: '580 km (WLTP)',
+                battery: '106 kWh',
+                power: '335 hp - 402 hp (SQ8 e-tron)',
+                charging: 'AC: 11 kW (11 hrs), DC Fast Charge: 170 kW (10-80% in ~31 mins)',
+                price: '€74,400'
+            },
+            {
+                id: '16',
+                name: 'Chevrolet Silverado EV',
+                image: 'https://placehold.co/400x250/fefce8/ca8a04?text=Silverado+EV',
+                shortDescription: 'An all-electric full-size pickup truck with impressive capabilities.',
+                longDescription: 'The Chevrolet Silverado EV is a highly anticipated all-electric pickup truck designed to combine the rugged capabilities of the Silverado with the benefits of an electric powertrain. Built on the Ultium platform, it promises substantial range, impressive towing capacity, and innovative features like a mid-gate that extends the bed. It aims to offer a versatile solution for both work and personal use, challenging the traditional pickup truck market.',
+                range: '640 km',
+                battery: '200 kWh (estimated)',
+                power: '510 hp - 754 hp',
+                charging: 'DC Fast Charge: 350 kW+',
+                price: '$50,000 (starting, estimated)'
+            },
+            {
+                id: '17',
+                name: 'GMC Hummer EV Pickup',
+                image: 'https://placehold.co/400x250/f0fdf4/166534?text=Hummer+EV+Pickup',
+                shortDescription: 'A colossal electric supertruck with extreme off-road capabilities.',
+                longDescription: 'The GMC Hummer EV Pickup marks the return of the Hummer nameplate as an all-electric "supertruck." It boasts incredible power, extreme off-road capabilities (including "CrabWalk" mode), and a futuristic design. Built on GM\'s Ultium platform, it offers remarkable acceleration for its size and a high-tech interior. The Hummer EV is aimed at enthusiasts seeking an electric vehicle that combines immense power with unparalleled off-road prowess.',
+                range: '530 km',
+                battery: '212 kWh (usable)',
+                power: '1000 hp',
+                charging: 'DC Fast Charge: 350 kW+',
+                price: '$110,000'
+            },
+            {
+                id: '18',
+                name: 'Rivian R1S',
+                image: 'https://placehold.co/400x250/e0e7ff/3730a3?text=Rivian+R1S',
+                shortDescription: 'The adventurous electric SUV with great off-road capability.',
+                longDescription: 'The Rivian R1S is the SUV counterpart to the R1T pickup, offering similar off-road capabilities and adventurous spirit in a seven-seat package. It features a quad-motor powertrain, adaptable air suspension, and a versatile interior with ample cargo space. Rivian focuses on outdoor enthusiasts, designing vehicles that are equally at home on city streets or rugged trails. The R1S is a compelling choice for those seeking a premium, capable, and environmentally conscious SUV.',
+                range: '500 km',
+                battery: '135 kWh or 180 kWh',
+                power: '600 hp - 835 hp',
+                charging: 'DC Fast Charge: 200 kW+',
+                price: '$78,000'
+            },
+            {
+                id: '19',
+                name: 'Lucid Air',
+                image: 'https://placehold.co/400x250/f0f9ff/1e40af?text=Lucid+Air',
+                shortDescription: 'A luxury electric sedan setting new benchmarks for range and performance.',
+                longDescription: 'The Lucid Air is an ultra-luxury electric sedan that has shattered range records, offering an astounding driving range on a single charge. Beyond its efficiency, it delivers breathtaking performance, with some variants boasting over 1,000 horsepower. The interior is exquisitely crafted with premium materials and features a futuristic dashboard with multiple high-resolution displays. The Lucid Air is a technological marvel and a serious challenger in the high-end EV market, emphasizing luxury, performance, and groundbreaking efficiency.',
+                range: '830 km (Grand Touring)',
+                battery: '92 kWh - 118 kWh',
+                power: '480 hp - 1234 hp',
+                charging: 'DC Fast Charge: 300 kW (10-80% in ~20 mins)',
+                price: '$87,400'
+            },
+            {
+                id: '20',
+                name: 'Porsche Macan EV',
+                image: 'https://placehold.co/400x250/fef2f2/ef4444?text=Porsche+Macan+EV',
+                shortDescription: 'The all-electric version of Porsche\'s popular compact SUV.',
+                longDescription: 'The Porsche Macan EV transitions the brand\'s best-selling SUV into the electric era, built on the new Premium Platform Electric (PPE) co-developed with Audi. It promises to deliver the characteristic Porsche driving dynamics, performance, and luxury in an all-electric package. The Macan EV is expected to offer strong acceleration, precise handling, and advanced technology features, including rapid charging capabilities. It will appeal to those who want a sporty and practical electric SUV with a premium badge.',
+                range: '500 km (estimated)',
+                battery: '100 kWh (gross)',
+                power: 'Up to 603 hp',
+                charging: 'DC Fast Charge: 270 kW+',
+                price: '€80,000 (estimated)'
+            },
+            {
+                id: '21',
+                name: 'BMW i5',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=BMW+i5',
+                shortDescription: 'The electric iteration of the executive 5 Series sedan.',
+                longDescription: 'The BMW i5 electrifies the renowned 5 Series sedan, offering a blend of executive luxury, advanced technology, and electric performance. It features a refined interior, the latest iDrive infotainment system, and a comfortable ride suitable for long journeys. The i5 provides strong acceleration and BMW\'s characteristic driving dynamics, albeit with a quieter, smoother electric powertrain. It\'s a sophisticated choice for business professionals and families looking for a premium electric sedan.',
+                range: '582 km (WLTP)',
+                battery: '81.2 kWh',
+                power: '335 hp (eDrive40) - 593 hp (M60)',
+                charging: 'AC: 11 kW (8-9 hrs), DC Fast Charge: 205 kW (10-80% in ~30 mins)',
+                price: '€70,000'
+            },
+            {
+                id: '22',
+                name: 'Volvo EX30',
+                image: 'https://placehold.co/400x250/eef2ff/4c1d95?text=Volvo+EX30',
+                shortDescription: 'Volvo\'s smallest and most affordable electric SUV, focusing on urban living.',
+                longDescription: 'The Volvo EX30 is designed as a compact and sustainable electric SUV, perfect for urban environments and smaller families. It emphasizes minimalist Scandinavian design, smart storage solutions, and a strong focus on safety, a Volvo hallmark. Despite its compact size, it promises a lively driving experience and quick acceleration. The EX30 aims to make premium electric mobility more accessible, embodying Volvo\'s commitment to electrification and sustainability.',
+                range: '475 km (WLTP)',
+                battery: '69 kWh',
+                power: '268 hp (Single Motor) - 422 hp (Twin Motor)',
+                charging: 'AC: 11 kW (6-7 hrs), DC Fast Charge: 153 kW (10-80% in ~26 mins)',
+                price: '€36,000'
+            },
+            {
+                id: '23',
+                name: 'Jeep Wagoneer S',
+                image: 'https://placehold.co/400x250/f0f9ff/10b981?text=Wagoneer+S',
+                shortDescription: 'A premium all-electric SUV from Jeep, combining luxury with capability.',
+                longDescription: 'The Jeep Wagoneer S represents Jeep\'s entry into the premium all-electric SUV segment, combining the brand\'s legendary capability with a luxurious and modern design. It\'s built on a STLA Large platform, promising impressive power and range. While focusing on on-road refinement, it\'s expected to retain Jeep\'s off-road DNA. The Wagoneer S aims to offer a sophisticated electric SUV experience for those who appreciate both luxury and potential adventure.',
+                range: '640 km (estimated)',
+                battery: '100 kWh+',
+                power: '600 hp',
+                charging: 'DC Fast Charge: 200 kW+',
+                price: '$80,000 (estimated)'
+            },
+            {
+                id: '24',
+                name: 'Cadillac Escalade IQ',
+                image: 'https://placehold.co/400x250/fff7ed/b45309?text=Escalade+IQ',
+                shortDescription: 'The all-electric version of the iconic luxury SUV.',
+                longDescription: 'The Cadillac Escalade IQ takes the iconic American luxury SUV into the electric age, offering an unparalleled blend of grandeur, advanced technology, and zero-emissions power. It boasts a massive battery, impressive range, and super-fast charging. The interior is expected to be even more opulent than the gasoline version, with large screens and premium materials. The Escalade IQ is designed for those who demand ultimate luxury and presence in an electric vehicle.',
+                range: '725 km (estimated)',
+                battery: '200 kWh (estimated)',
+                power: 'Up to 750 hp',
+                charging: 'DC Fast Charge: 350 kW+',
+                price: '$130,000 (starting, estimated)'
+            },
+            {
+                id: '25',
+                name: 'Mini Cooper Electric (New)',
+                image: 'https://placehold.co/400x250/f0f9ff/1e40af?text=New+Mini+EV',
+                shortDescription: 'The redesigned electric Mini, offering more range and modern tech.',
+                longDescription: 'The next-generation Mini Cooper Electric (J01) brings significant improvements in range, performance, and technology while retaining its iconic go-kart handling feel. It features a refreshed exterior design and a minimalist interior centered around a large circular OLED display. The new platform allows for a larger battery and more efficient powertrain, making it a more practical daily driver. It will appeal to those who love the Mini character but desire a more capable electric experience.',
+                range: '400 km (WLTP)',
+                battery: '54.2 kWh',
+                power: '218 hp (Cooper SE)',
+                charging: 'AC: 11 kW, DC Fast Charge: 95 kW',
+                price: '€35,000 (estimated)'
+            },
+            {
+                id: '26',
+                name: 'Fiat 500e',
+                image: 'https://placehold.co/400x250/fdf2f8/be185d?text=Fiat+500e',
+                shortDescription: 'A charming and stylish urban electric car.',
+                longDescription: 'The new Fiat 500e reimagines the iconic city car as an all-electric vehicle, perfectly suited for urban environments. It retains the retro-chic design of its predecessors while offering a modern electric powertrain. The 500e is compact, agile, and easy to park, making it ideal for city driving. Its interior is stylish and features contemporary tech. It\'s a fun and fashionable choice for those seeking a small, characterful, and zero-emission car.',
+                range: '320 km (WLTP)',
+                battery: '42 kWh',
+                power: '118 hp',
+                charging: 'AC: 11 kW (4 hrs), DC Fast Charge: 85 kW (0-80% in ~35 mins)',
+                price: '€30,000'
+            },
+            {
+                id: '27',
+                name: 'Cupra Born',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Cupra+Born',
+                shortDescription: 'A sporty electric hatchback from SEAT\'s performance brand.',
+                longDescription: 'The Cupra Born is a sporty electric hatchback based on Volkswagen\'s MEB platform, sharing components with the VW ID.3. However, it distinguishes itself with Cupra\'s distinctive design language and a more driver-focused setup. The Born offers engaging handling, responsive acceleration, and a stylish interior with unique details. It appeals to those who want a practical electric hatchback but with a more dynamic and emotional appeal.',
+                range: '420 km (WLTP)',
+                battery: '58 kWh or 77 kWh',
+                power: '201 hp - 228 hp',
+                charging: 'AC: 11 kW (6-7 hrs), DC Fast Charge: 135 kW (5-80% in ~35 mins)',
+                price: '€39,000'
+            },
+            {
+                id: '28',
+                name: 'MG4 EV',
+                image: 'https://placehold.co/400x250/f0fdf4/15803d?text=MG4+EV',
+                shortDescription: 'An affordable and practical electric hatchback with a competitive range.',
+                longDescription: 'The MG4 EV is a highly competitive electric hatchback known for its impressive range, rear-wheel-drive dynamics, and attractive pricing. It offers a spacious interior, decent cargo capacity, and a straightforward infotainment system. The MG4 is designed to be a compelling option for mainstream buyers looking for an accessible and practical electric vehicle without compromising on range or driving enjoyment. Its aggressive pricing makes it a strong value proposition in the EV market.',
+                range: '450 km (WLTP)',
+                battery: '64 kWh',
+                power: '201 hp - 429 hp (XPower)',
+                charging: 'AC: 11 kW (6.5 hrs), DC Fast Charge: 135 kW (10-80% in ~35 mins)',
+                price: '€32,000'
+            },
+            {
+                id: '29',
+                name: 'Smart #1',
+                image: 'https://placehold.co/400x250/f5f5f5/44403c?text=Smart+%231',
+                shortDescription: 'The new generation of Smart cars, now an electric compact SUV.',
+                longDescription: 'The Smart #1 marks a significant evolution for the Smart brand, transforming from a microcar manufacturer to an electric compact SUV producer. Developed in collaboration with Geely, the #1 offers a surprisingly spacious interior for its size, a minimalist design, and an emphasis on connectivity. It aims to provide a premium urban mobility solution with enough practicality for longer trips. Its modern styling and advanced tech appeal to a new generation of Smart buyers.',
+                range: '440 km (WLTP)',
+                battery: '66 kWh',
+                power: '268 hp (Single Motor) - 422 hp (Brabus)',
+                charging: 'AC: 22 kW (3 hrs), DC Fast Charge: 150 kW (10-80% in ~30 mins)',
+                price: '€42,000'
+            },
+            {
+                id: '30',
+                name: 'BYD Atto 3',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=BYD+Atto+3',
+                shortDescription: 'A popular electric SUV from BYD, known for its Blade Battery technology.',
+                longDescription: 'The BYD Atto 3 is a compact electric SUV that has gained significant traction in global markets due to its competitive pricing, decent range, and innovative "Blade Battery" technology, which enhances safety and space utilization. It features a unique, somewhat quirky interior design and offers a comfortable ride. The Atto 3 represents BYD\'s growing presence in the international EV market, delivering a compelling package for everyday family use.',
+                range: '420 km (WLTP)',
+                battery: '60.48 kWh',
+                power: '201 hp',
+                charging: 'AC: 7 kW (8.5 hrs), DC Fast Charge: 88 kW (10-80% in ~45 mins)',
+                price: '€37,000'
+            },
+            {
+                id: '31',
+                name: 'Tesla Model Y',
+                image: 'https://placehold.co/400x250/f0f9ff/334155?text=Tesla+Model+Y',
+                shortDescription: 'The versatile electric SUV, offering spaciousness and performance.',
+                longDescription: 'The Tesla Model Y is a highly popular compact SUV, sharing many components with the Model 3 but offering more cargo space and an optional seven-seat configuration. It combines Tesla\'s signature performance and minimalist interior with enhanced practicality. The Model Y benefits from the extensive Supercharger network and includes advanced Autopilot features. It\'s a strong choice for families or individuals needing more utility than the Model 3 provides.',
+                range: '533 km (Long Range)',
+                battery: '75 kWh',
+                power: '384 hp (Long Range)',
+                charging: 'AC: 11 kW (7-8 hrs), DC Fast Charge: 250 kW (15-80% in ~20 mins)',
+                price: '€49,990'
+            },
+            {
+                id: '32',
+                name: 'Skoda Enyaq iV',
+                image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=Skoda+Enyaq+iV',
+                shortDescription: 'A practical and well-rounded electric SUV from Skoda.',
+                longDescription: 'The Skoda Enyaq iV is a family-friendly electric SUV built on Volkswagen\'s MEB platform. It offers a spacious and smartly designed interior, comfortable ride quality, and a user-friendly infotainment system. The Enyaq iV focuses on practicality and value, making it an appealing option for those transitioning to an EV. It comes with various battery and power options, including rear-wheel drive and all-wheel drive, providing flexibility for different needs.',
+                range: '540 km (WLTP)',
+                battery: '82 kWh (usable 77 kWh)',
+                power: '177 hp - 302 hp (RS iV)',
+                charging: 'AC: 11 kW (7.5 hrs), DC Fast Charge: 135 kW (5-80% in ~35 mins)',
+                price: '€42,000'
+            },
+            {
+                id: '33',
+                name: 'Cupra Tavascan',
+                image: 'https://placehold.co/400x250/fff7ed/b45309?text=Cupra+Tavascan',
+                shortDescription: 'A stylish electric SUV-coupe from Cupra, sharing MEB platform.',
+                longDescription: 'The Cupra Tavascan is an all-electric SUV-coupe, representing Cupra\'s venture into the performance electric SUV segment. Sharing the MEB platform with other VW Group EVs, it features a more dramatic and sporty design language than its siblings. The Tavascan promises engaging driving dynamics and a tech-rich interior, appealing to buyers who want a distinctive and performance-oriented electric SUV that stands out from the crowd.',
+                range: '520 km (WLTP)',
+                battery: '77 kWh',
+                power: '286 hp - 340 hp',
+                charging: 'AC: 11 kW, DC Fast Charge: 135 kW',
+                price: '€55,000 (estimated)'
+            },
+            {
+                id: '34',
+                name: 'Mercedes-Benz G-Class Electric',
+                image: 'https://placehold.co/400x250/f0fdf4/15803d?text=G-Class+EV',
+                shortDescription: 'The iconic G-Wagen going all-electric, retaining its rugged appeal.',
+                longDescription: 'The Mercedes-Benz G-Class Electric, or EQG, electrifies the legendary off-roader, aiming to retain its iconic boxy design and unparalleled off-road capabilities while adopting a zero-emission powertrain. It is expected to feature a quad-motor setup, allowing for advanced torque vectoring and maneuvers like the "G-Turn" (tank turn). The EQG will combine extreme ruggedness with the luxury and advanced technology expected from a Mercedes-Benz electric vehicle, catering to a unique niche in the EV market.',
+                range: '473 km (estimated)',
+                battery: '100+ kWh (estimated)',
+                power: '576 hp (estimated)',
+                charging: 'DC Fast Charge: High capacity',
+                price: '€150,000 (estimated)'
+            },
+            {
+                id: '35',
+                name: 'Rolls-Royce Spectre',
+                image: 'https://placehold.co/400x250/f5f5f5/57534e?text=Spectre+EV',
+                shortDescription: 'The ultra-luxury electric coupe from Rolls-Royce.',
+                longDescription: 'The Rolls-Royce Spectre marks the brand\'s first all-electric series production car, embodying the ultimate in luxury, refinement, and silent propulsion. It retains the signature Rolls-Royce design language while incorporating subtle electric-era cues. The Spectre promises an effortless and "magic carpet" ride, unparalleled craftsmanship, and bespoke customization options. It sets a new standard for ultra-luxury electric vehicles, appealing to an exclusive clientele who seek opulence and sustainability.',
+                range: '530 km (WLTP)',
+                battery: '102 kWh',
+                power: '576 hp',
+                charging: 'DC Fast Charge: High capacity',
+                price: '€350,000+'
+            },
+            {
+                id: '36',
+                name: 'Hyundai Kona Electric',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Kona+Electric',
+                shortDescription: 'A popular compact electric SUV, redesigned with more range.',
+                longDescription: 'The second-generation Hyundai Kona Electric boasts a larger, more futuristic design and improved range and features. It remains a practical and efficient compact SUV, well-suited for urban and suburban driving. The new Kona Electric offers a more spacious interior and updated infotainment technology. It provides a comfortable ride and zippy performance, continuing its appeal as an accessible and reliable electric vehicle for everyday use.',
+                range: '514 km (WLTP)',
+                battery: '64.8 kWh',
+                power: '201 hp',
+                charging: 'AC: 11 kW (6.5 hrs), DC Fast Charge: 100 kW (10-80% in ~41 mins)',
+                price: '€38,000'
+            },
+            {
+                id: '37',
+                name: 'Jeep Avenger',
+                image: 'https://placehold.co/400x250/fff7ed/b45309?text=Jeep+Avenger',
+                shortDescription: 'Jeep\'s first all-electric vehicle, a compact SUV for Europe.',
+                longDescription: 'The Jeep Avenger is the brand\'s inaugural all-electric vehicle, designed primarily for the European market. It\'s a compact SUV that retains Jeep\'s iconic design cues and promises surprising off-road capability for its segment, featuring Selec-Terrain and Hill Descent Control. The Avenger offers a modern interior and aims to be a practical and adventurous electric vehicle for urban explorers and light off-road enthusiasts.',
+                range: '400 km (WLTP)',
+                battery: '54 kWh',
+                power: '156 hp',
+                charging: 'AC: 11 kW (5.5 hrs), DC Fast Charge: 100 kW (20-80% in ~24 mins)',
+                price: '€35,000'
+            },
+            {
+                id: '38',
+                name: 'Peugeot e-208',
+                image: 'https://placehold.co/400x250/ffe4e6/be123c?text=Peugeot+e-208',
+                shortDescription: 'A stylish and fun-to-drive electric supermini.',
+                longDescription: 'The Peugeot e-208 is an electric version of the popular 208 supermini, combining stylish French design with zero-emission mobility. It offers a comfortable and engaging driving experience, making it well-suited for city driving and shorter commutes. The interior features Peugeot\'s distinctive i-Cockpit layout with a small steering wheel and digital instruments. The e-208 is a chic and practical option for those looking for a compact and fashionable electric car.',
+                range: '362 km (WLTP)',
+                battery: '50 kWh',
+                power: '136 hp',
+                charging: 'AC: 11 kW (5 hrs), DC Fast Charge: 100 kW (0-80% in ~30 mins)',
+                price: '€33,000'
+            },
+            {
+                id: '39',
+                name: 'Opel Corsa-e',
+                image: 'https://placehold.co/400x250/eef2ff/4338ca?text=Opel+Corsa-e',
+                shortDescription: 'A practical and affordable electric hatchback from Opel/Vauxhall.',
+                longDescription: 'The Opel Corsa-e (Vauxhall Corsa Electric in the UK) is a popular electric hatchback that shares its platform with the Peugeot e-208. It offers a practical and comfortable ride, making it suitable for daily commuting and city driving. The Corsa-e provides a straightforward user experience with familiar controls and features. It\'s a reliable and accessible entry point into electric vehicle ownership, appealing to those seeking an economical and well-equipped small EV.',
+                range: '359 km (WLTP)',
+                battery: '50 kWh',
+                power: '136 hp',
+                charging: 'AC: 11 kW (5 hrs), DC Fast Charge: 100 kW (0-80% in ~30 mins)',
+                price: '€32,000'
+            },
+            {
+                id: '40',
+                name: 'Citroën ë-C4',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=Citroen+e-C4',
+                shortDescription: 'A uniquely styled electric crossover with a focus on comfort.',
+                longDescription: 'The Citroën ë-C4 is an electric compact crossover that stands out with its distinctive, unconventional design and a strong emphasis on comfort. It features Citroën\'s Advanced Comfort program, including progressive hydraulic cushions and comfortable seats, to deliver an exceptionally smooth ride. The ë-C4 offers a practical interior and aims to provide a relaxed and serene driving experience, making it a comfortable alternative in the EV segment.',
+                range: '357 km (WLTP)',
+                battery: '50 kWh',
+                power: '136 hp',
+                charging: 'AC: 11 kW (5 hrs), DC Fast Charge: 100 kW (0-80% in ~30 mins)',
+                price: '€36,000'
+            },
+            {
+                id: '41',
+                name: 'Tesla Cybertruck',
+                image: 'https://placehold.co/400x250/f0f9ff/334155?text=Tesla+Cybertruck',
+                shortDescription: 'Tesla\'s futuristic and unconventional electric pickup truck.',
+                longDescription: 'The Tesla Cybertruck features a radical, stainless steel exoskeleton design and promises exceptional durability and performance. It offers impressive towing and payload capacities, along with fast acceleration and a long range. Its unique angular design sets it apart from all other vehicles on the road. The Cybertruck is designed to be a highly versatile and tough vehicle, pushing the boundaries of pickup truck design and capability.',
+                range: '550 km (estimated)',
+                battery: '120 kWh (estimated)',
+                power: 'Up to 845 hp (Cyberbeast)',
+                charging: 'DC Fast Charge: 250 kW+',
+                price: '$60,990 (starting, estimated)'
+            },
+            {
+                id: '42',
+                name: 'Fisker Ocean',
+                image: 'https://placehold.co/400x250/e0e7ff/3730a3?text=Fisker+Ocean',
+                shortDescription: 'A stylish and sustainable electric SUV with unique features.',
+                longDescription: 'The Fisker Ocean is an all-electric SUV that emphasizes sustainable materials and innovative features, such as the "California Mode," which opens all windows and the sunroof at once. It boasts a sleek design and a tech-rich interior with a large rotating touchscreen. The Ocean offers a competitive range and aims to provide a premium yet eco-conscious driving experience. It\'s a compelling option for those seeking a unique and environmentally friendly SUV.',
+                range: '700 km (WLTP - Extreme)',
+                battery: '113 kWh',
+                power: '275 hp - 564 hp (Extreme)',
+                charging: 'AC: 11 kW, DC Fast Charge: 250 kW (10-80% in ~35 mins)',
+                price: '$38,999 (starting)'
+            },
+            {
+                id: '43',
+                name: 'Polestar 3',
+                image: 'https://placehold.co/400x250/f0fdf4/047857?text=Polestar+3',
+                shortDescription: 'A performance-oriented electric SUV from Polestar, sharing Volvo tech.',
+                longDescription: 'The Polestar 3 is a premium electric SUV that combines minimalist Scandinavian design with strong performance. It shares technology with Volvo but focuses on a sportier driving experience. The interior is characterized by high-quality, sustainable materials and a large central display running Android Automotive OS. The Polestar 3 is designed to offer a dynamic ride, advanced safety features, and a competitive range, appealing to luxury EV SUV buyers.',
+                range: '610 km (WLTP)',
+                battery: '111 kWh (usable 107 kWh)',
+                power: '489 hp - 517 hp',
+                charging: 'AC: 11 kW, DC Fast Charge: 250 kW (10-80% in ~30 mins)',
+                price: '€83,900'
+            },
+            {
+                id: '44',
+                name: 'Mercedes-Benz EQG',
+                image: 'https://placehold.co/400x250/f5f5f5/57534e?text=MB+EQG',
+                shortDescription: 'The electric version of the iconic G-Class, maintaining its off-road prowess.',
+                longDescription: 'The Mercedes-Benz EQG is the fully electric interpretation of the legendary G-Class, promising to combine its unparalleled off-road capabilities with a silent, emission-free powertrain. It will feature four individually controlled electric motors, allowing for extraordinary traction and the ability to perform a "tank turn" (G-Turn). The EQG aims to deliver the ruggedness and luxury expected from a G-Wagen, adapted for the electric era, for adventurous and discerning customers.',
+                range: '473 km (estimated)',
+                battery: '100+ kWh (estimated)',
+                power: '576 hp (estimated)',
+                charging: 'DC Fast Charge: high capacity',
+                price: '€150,000 (estimated)'
+            },
+            {
+                id: '45',
+                name: 'Honda Prologue',
+                image: 'https://placehold.co/400x250/f0f9ff/1e40af?text=Honda+Prologue',
+                shortDescription: 'Honda\'s first major electric SUV for the North American market.',
+                longDescription: 'The Honda Prologue is a mid-size electric SUV developed in collaboration with General Motors, utilizing GM\'s Ultium battery platform. It marks a significant step in Honda\'s electrification strategy for North America. The Prologue features a clean, simple design and promises a spacious interior with modern technology. It aims to offer a comfortable and practical electric SUV experience with Honda\'s known reliability and quality, catering to a wide range of consumers.',
+                range: '480 km (estimated)',
+                battery: '85 kWh (estimated)',
+                power: '288 hp (AWD)',
+                charging: 'DC Fast Charge: 150 kW',
+                price: '$45,000 (starting, estimated)'
+            },
+            {
+                id: '46',
+                name: 'Toyota bZ4X',
+                image: 'https://placehold.co/400x250/ffe4e6/be123c?text=Toyota+bZ4X',
+                shortDescription: 'Toyota\'s dedicated electric SUV with unique styling.',
+                longDescription: 'The Toyota bZ4X is Toyota\'s first dedicated battery electric vehicle, signifying its commitment to electric mobility. It features a distinctive, angular design and offers a spacious interior with a focus on practicality and comfort. The bZ4X is available with front-wheel drive or all-wheel drive, providing versatility. Toyota aims to deliver its renowned reliability and quality in this all-electric SUV, making it a sensible choice for those looking for a dependable EV.',
+                range: '450 km (WLTP)',
+                battery: '71.4 kWh',
+                power: '201 hp (FWD), 215 hp (AWD)',
+                charging: 'AC: 6.6 kW (11 hrs), DC Fast Charge: 150 kW (10-80% in ~30 mins)',
+                price: '€44,000'
+            },
+            {
+                id: '47',
+                name: 'Subaru Solterra',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=Subaru+Solterra',
+                shortDescription: 'Subaru\'s all-electric SUV, twin to the Toyota bZ4X, with standard AWD.',
+                longDescription: 'The Subaru Solterra is the brand\'s first all-electric SUV, co-developed with Toyota and sharing its platform with the bZ4X. True to Subaru\'s heritage, it comes standard with Symmetrical All-Wheel Drive, enhancing its all-weather capability and light off-road prowess. The Solterra offers a comfortable ride, a practical interior, and a focus on safety. It\'s an appealing option for Subaru enthusiasts looking to transition to an electric vehicle without sacrificing AWD confidence.',
+                range: '460 km (WLTP)',
+                battery: '71.4 kWh',
+                power: '215 hp (AWD)',
+                charging: 'AC: 6.6 kW (11 hrs), DC Fast Charge: 100 kW (10-80% in ~50 mins)',
+                price: '€47,000'
+            },
+            {
+                id: '48',
+                name: 'Lexus RZ 450e',
+                image: 'https://placehold.co/400x250/fefce8/ca8a04?text=Lexus+RZ+450e',
+                shortDescription: 'Lexus\'s dedicated electric SUV, focusing on luxury and refinement.',
+                longDescription: 'The Lexus RZ 450e is a premium electric SUV, built on the same e-TNGA platform as the Toyota bZ4X and Subaru Solterra but with a distinct Lexus luxury treatment. It emphasizes refinement, a quiet cabin, and high-quality materials throughout the interior. The RZ 450e features Lexus\'s DIRECT4 all-wheel-drive system for enhanced handling. It aims to deliver a sophisticated and comfortable electric driving experience, appealing to luxury SUV buyers seeking an emission-free option.',
+                range: '440 km (WLTP)',
+                battery: '71.4 kWh',
+                power: '308 hp',
+                charging: 'AC: 6.6 kW (11 hrs), DC Fast Charge: 150 kW (10-80% in ~30 mins)',
+                price: '€65,000'
+            },
+            {
+                id: '49',
+                name: 'Genesis Electrified GV70',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=Genesis+GV70+EV',
+                shortDescription: 'The electric version of the stylish GV70 SUV, offering strong performance.',
+                longDescription: 'The Genesis Electrified GV70 is the all-electric variant of the popular GV70 luxury SUV. It retains the striking design and premium interior of its gasoline counterpart while offering a powerful electric powertrain and a smooth, quiet ride. The Electrified GV70 boasts impressive acceleration and features like Boost Mode for extra power. It provides a luxurious and dynamic electric SUV experience, combining performance, style, and advanced technology.',
+                range: '450 km (WLTP)',
+                battery: '77.4 kWh',
+                power: '429 hp (483 hp with Boost)',
+                charging: 'AC: 11 kW (7 hrs), DC Fast Charge: 350 kW (10-80% in ~18 mins)',
+                price: '€60,000'
+            },
+            {
+                id: '50',
+                name: 'BYD Seal',
+                image: 'https://placehold.co/400x250/fdf2f8/be185d?text=BYD+Seal',
+                shortDescription: 'A sleek and performance-oriented electric sedan from BYD.',
+                longDescription: 'The BYD Seal is a stylish electric sedan that combines a sporty design with advanced battery technology (Blade Battery). It offers impressive performance, a comfortable ride, and a well-appointed interior with a rotating central touchscreen. The Seal is a direct competitor to the Tesla Model 3, offering a compelling blend of range, speed, and features at a competitive price point. It showcases BYD\'s growing capability in producing high-quality electric vehicles for a global market.',
+                range: '570 km (WLTP)',
+                battery: '82.5 kWh',
+                power: '308 hp (RWD) - 523 hp (AWD)',
+                charging: 'AC: 11 kW (8.5 hrs), DC Fast Charge: 150 kW (10-80% in ~30 mins)',
+                price: '€45,000'
+            },
+            {
+                id: '51',
+                name: 'Tata Nexon EV',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Tata+Nexon+EV',
+                shortDescription: 'India\'s best-selling electric SUV, known for its practicality and value.',
+                longDescription: 'The Tata Nexon EV is a highly popular electric compact SUV in India, offering a strong value proposition with its competitive pricing and practical features. It has undergone several updates to enhance its range, performance, and features. The Nexon EV is well-suited for urban commuting and provides a comfortable ride for its segment. It plays a significant role in making electric vehicles accessible to a wider audience in the Indian market.',
+                range: '465 km (MIDC)',
+                battery: '40.5 kWh',
+                power: '143 hp',
+                charging: 'AC: 7.2 kW (6 hrs), DC Fast Charge: 50 kW (10-80% in ~56 mins)',
+                price: '₹14 Lakh'
+            },
+            {
+                id: '52',
+                name: 'Mahindra XUV400 EV',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=Mahindra+XUV400+EV',
+                shortDescription: 'Mahindra\'s electric SUV, offering good range and features.',
+                longDescription: 'The Mahindra XUV400 EV is an electric compact SUV from the Indian automaker, designed to compete in the growing EV segment. It offers a decent range and comes with features like a sunroof and connected car technology. The XUV400 EV aims to provide a comfortable and practical electric driving experience, catering to Indian consumers looking for a capable and locally manufactured EV.',
+                range: '456 km (ARAI)',
+                battery: '39.4 kWh',
+                power: '150 hp',
+                charging: 'AC: 7.2 kW (6.5 hrs), DC Fast Charge: 50 kW (0-80% in ~50 mins)',
+                price: '₹15.5 Lakh'
+            },
+            {
+                id: '53',
+                name: 'MG Comet EV',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=MG+Comet+EV',
+                shortDescription: 'An ultra-compact electric car ideal for urban mobility.',
+                longDescription: 'The MG Comet EV is a quirky and ultra-compact electric vehicle designed specifically for urban commuting. Its small footprint makes it incredibly agile and easy to park in congested city areas. Despite its size, it offers a surprisingly spacious interior for two to four occupants and a modern digital cockpit. The Comet EV is a cost-effective and environmentally friendly solution for daily city drives, targeting young urban dwellers.',
+                range: '230 km (ARAI)',
+                battery: '17.3 kWh',
+                power: '42 hp',
+                charging: 'AC: 3.3 kW (7 hrs), AC Fast Charge: 7.4 kW (10-80% in ~2.5 hrs)',
+                price: '₹7.5 Lakh'
+            },
+            {
+                id: '54',
+                name: 'Tata Tiago EV',
+                image: 'https://placehold.co/400x250/f0fdf4/047857?text=Tata+Tiago+EV',
+                shortDescription: 'An affordable electric hatchback, making EVs accessible.',
+                longDescription: 'The Tata Tiago EV is one of the most affordable electric cars in India, democratizing EV ownership for a wider audience. It offers a decent range for city commutes and features automatic transmission and regenerative braking. Despite its price point, it includes essential features for a comfortable driving experience. The Tiago EV is a practical and economical choice for first-time EV buyers or as a second car for city use.',
+                range: '315 km (MIDC)',
+                battery: '24 kWh',
+                power: '74 hp',
+                charging: 'AC: 3.3 kW (8.7 hrs), DC Fast Charge: 50 kW (10-80% in ~58 mins)',
+                price: '₹8 Lakh'
+            },
+            {
+                id: '55',
+                name: 'Tata Punch EV',
+                image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=Tata+Punch+EV',
+                shortDescription: 'A micro-SUV electric car with robust styling and practical features.',
+                longDescription: 'The Tata Punch EV brings electric mobility to the popular micro-SUV segment. It combines the robust and confident styling of the Punch with a clean electric powertrain. It offers a respectable range and features a modern interior with digital displays. The Punch EV is designed to be a versatile and safe urban electric vehicle, appealing to those who want the practicality and road presence of an SUV in a compact, electric package.',
+                range: '421 km (MIDC)',
+                battery: '35 kWh',
+                power: '122 hp',
+                charging: 'AC: 7.2 kW (5 hrs), DC Fast Charge: 50 kW (10-80% in ~56 mins)',
+                price: '₹10 Lakh'
+            },
+            {
+                id: '56',
+                name: 'Mahindra BE 6',
+                image: 'https://placehold.co/400x250/f8fdf8/0a0a0a?text=Mahindra+BE+6',
+                shortDescription: 'A futuristic electric SUV concept from Mahindra, part of its BE range.',
+                longDescription: 'The Mahindra BE 6 is an upcoming electric SUV concept, part of Mahindra\'s "Born Electric" (BE) lineup. It showcases a futuristic design language and promises advanced features and a long range. The BE 6 is expected to be a premium offering, emphasizing design, technology, and performance, signaling Mahindra\'s ambition in the global EV market with dedicated electric platforms.',
+                range: '550-650 km (estimated)',
+                battery: '59-79 kWh (estimated)',
+                power: '228-282 bhp (estimated)',
+                charging: 'DC Fast Charge: High capacity',
+                price: '₹19 Lakh (estimated)'
+            },
+            {
+                id: '57',
+                name: 'Tata Harrier EV',
+                image: 'https://placehold.co/400x250/eef2ff/4338ca?text=Tata+Harrier+EV',
+                shortDescription: 'The electric version of the popular Harrier SUV, with enhanced range.',
+                longDescription: 'The Tata Harrier EV is the highly anticipated all-electric variant of Tata\'s successful mid-size SUV. It is expected to retain the bold design and spacious cabin of the standard Harrier while offering a significant electric range and powerful performance. The Harrier EV will likely incorporate advanced features and technology, aiming to be a compelling option in the electric SUV segment for Indian consumers who desire a capable and premium EV.',
+                range: '500-600 km (estimated)',
+                battery: '60 kWh+ (estimated)',
+                power: 'Strong dual-motor (estimated)',
+                charging: 'DC Fast Charge: High capacity',
+                price: '₹22 Lakh (estimated)'
+            },
+            {
+                id: '58',
+                name: 'MG ZS EV',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=MG+ZS+EV',
+                shortDescription: 'A popular electric SUV with a good balance of range and features.',
+                longDescription: 'The MG ZS EV is a well-established electric SUV known for its practicality, spacious interior, and competitive pricing. It has received updates over time to improve its range and technology features. The ZS EV offers a comfortable ride and is a suitable family car for daily commutes and longer journeys. It remains a strong contender in the electric SUV market, offering a compelling package of features and value.',
+                range: '461 km (ARAI)',
+                battery: '50.3 kWh',
+                power: '177 hp',
+                charging: 'AC: 7.4 kW (8.5-9 hrs), DC Fast Charge: 50 kW (0-80% in ~60 mins)',
+                price: '₹18 Lakh'
+            },
+            {
+                id: '59',
+                name: 'BYD Seal (India Spec)',
+                image: 'https://placehold.co/400x250/fff7ed/ea580c?text=BYD+Seal+India',
+                shortDescription: 'BYD\'s sleek electric sedan launched in the Indian market.',
+                longDescription: 'The BYD Seal has made its entry into the Indian market as a premium electric sedan. It features a sleek, aerodynamic design and is built on BYD\'s e-Platform 3.0 with Blade Battery technology. The Seal offers strong performance, a comfortable and high-tech interior with a rotating screen, and an impressive range. It aims to compete with established luxury EVs, providing a compelling option for discerning Indian buyers looking for a sophisticated electric sedan.',
+                range: '510-650 km (ARAI)',
+                battery: '61.44 kWh or 82.56 kWh',
+                power: '204 hp (RWD) - 530 hp (AWD)',
+                charging: 'AC: 11 kW, DC Fast Charge: 150 kW (30-80% in ~26 mins)',
+                price: '₹41 Lakh'
+            },
+            {
+                id: '60',
+                name: 'Kia EV6 (India Spec)',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Kia+EV6+India',
+                shortDescription: 'Kia\'s flagship electric crossover, available in India with premium features.',
+                longDescription: 'The Kia EV6 is offered in India as a premium electric crossover, imported as a CBU (Completely Built Unit). It boasts a striking design, a high-quality interior, and impressive performance figures. Key features include ultra-fast charging capability thanks to its 800V architecture, advanced driver-assistance systems (ADAS), and V2L functionality. The EV6 targets luxury EV buyers who prioritize design, technology, and dynamic driving.',
+                range: '708 km (ARAI)',
+                battery: '77.4 kWh',
+                power: '229 hp (RWD) - 325 hp (AWD)',
+                charging: 'AC: 11 kW, DC Fast Charge: 350 kW (10-80% in ~18 mins)',
+                price: '₹61 Lakh'
+            },
+            {
+                id: '61',
+                name: 'BMW i7 (India Spec)',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=BMW+i7+India',
+                shortDescription: 'The ultimate electric luxury sedan available in India.',
+                longDescription: 'The BMW i7 is the all-electric version of the 7 Series, representing the pinnacle of electric luxury in India. It offers an exceptionally opulent and spacious interior, complete with high-end materials and groundbreaking technology like the 31.3-inch 8K BMW Theatre Screen for rear passengers. The i7 delivers a silent, powerful, and supremely comfortable driving experience. It caters to discerning buyers seeking the highest level of luxury, sophistication, and zero-emission mobility.',
+                range: '625 km (WLTP)',
+                battery: '101.7 kWh',
+                power: '536 hp (xDrive60) - 650 hp (M70 xDrive)',
+                charging: 'AC: 11 kW, DC Fast Charge: 195 kW (10-80% in ~34 mins)',
+                price: '₹2.03 Crore'
+            },
+            {
+                id: '62',
+                name: 'Audi Q4 e-tron Sportback',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=Audi+Q4+Sportback',
+                shortDescription: 'The coupe-styled version of the Q4 e-tron, adding sporty appeal.',
+                longDescription: 'The Audi Q4 e-tron Sportback combines the practicality of the Q4 e-tron with a more dynamic, coupe-like roofline. It offers a stylish aesthetic without significantly compromising interior space. Like its SUV sibling, it delivers a comfortable and refined driving experience, a high-quality interior, and a choice of powerful electric powertrains. The Q4 e-tron Sportback appeals to those who desire a more expressive and sporty design in a compact electric SUV.',
+                range: '490 km (WLTP)',
+                battery: '77 kWh',
+                power: '204 hp (RWD) - 299 hp (AWD)',
+                charging: 'AC: 11 kW, DC Fast Charge: 135 kW (5-80% in ~38 mins)',
+                price: '€55,000 (estimated)'
+            },
+            {
+                id: '63',
+                name: 'Mercedes-Benz EQS SUV',
+                image: 'https://placehold.co/400x250/f0fdf4/047857?text=MB+EQS+SUV',
+                shortDescription: 'The large electric luxury SUV from Mercedes-Benz.',
+                longDescription: 'The Mercedes-Benz EQS SUV translates the luxurious experience of the EQS sedan into a versatile SUV body style, offering up to seven seats. It provides a supremely comfortable ride, a quiet cabin, and the option of the impressive MBUX Hyperscreen. Designed for families and those needing more space, the EQS SUV combines the efficiency of an EV with the practicality and commanding presence of a large SUV, complete with advanced driver aids and premium features.',
+                range: '660 km (WLTP)',
+                battery: '107.8 kWh',
+                power: '355 hp (EQS 450+) - 536 hp (EQS 580)',
+                charging: 'AC: 11 kW, DC Fast Charge: 200 kW (10-80% in ~31 mins)',
+                price: '€110,000'
+            },
+            {
+                id: '64',
+                name: 'Volvo C40 Recharge',
+                image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=Volvo+C40',
+                shortDescription: 'A sleek electric SUV coupe from Volvo, with a focus on design.',
+                longDescription: 'The Volvo C40 Recharge is an all-electric SUV coupe that shares its platform with the XC40 Recharge but features a distinctive sloping roofline for a sportier look. It offers a premium interior with sustainable materials and an Android Automotive OS infotainment system. The C40 Recharge delivers strong performance and a comfortable ride, appealing to buyers who want a stylish and environmentally conscious electric vehicle with Volvo\'s renowned safety features.',
+                range: '550 km (WLTP)',
+                battery: '69 kWh or 82 kWh',
+                power: '238 hp (Single Motor) - 402 hp (Dual Motor)',
+                charging: 'AC: 11 kW (7-8 hrs), DC Fast Charge: 200 kW (10-80% in ~27 mins)',
+                price: '€50,000'
+            },
+            {
+                id: '65',
+                name: 'Audi A6 e-tron',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Audi+A6+e-tron',
+                shortDescription: 'An upcoming electric executive sedan from Audi, based on PPE platform.',
+                longDescription: 'The Audi A6 e-tron is an anticipated electric executive sedan built on the new Premium Platform Electric (PPE) platform, promising enhanced range, performance, and charging speeds. It is expected to feature a sleek, aerodynamic design and a luxurious, high-tech interior. The A6 e-tron aims to combine Audi\'s signature design language with cutting-edge electric vehicle technology, positioning itself as a strong competitor in the premium electric sedan segment.',
+                range: '700 km (estimated)',
+                battery: '100 kWh (estimated)',
+                power: 'Up to 469 hp (estimated)',
+                charging: 'DC Fast Charge: 270 kW+',
+                price: '€65,000 (estimated)'
+            },
+            {
+                id: '66',
+                name: 'Cadillac Celestiq',
+                image: 'https://placehold.co/400x250/fff7ed/b45309?text=Cadillac+Celestiq',
+                shortDescription: 'An ultra-luxury, hand-built electric sedan from Cadillac.',
+                longDescription: 'The Cadillac Celestiq is a hand-built, ultra-luxury electric sedan that serves as Cadillac\'s halo car, showcasing bespoke craftsmanship and cutting-edge technology. It features a stunning, avant-garde design and an interior filled with premium materials and personalized touches. The Celestiq represents the pinnacle of Cadillac\'s design and engineering capabilities, aiming to redefine American luxury in the electric age for an exclusive clientele.',
+                range: '480 km (estimated)',
+                battery: '111 kWh (estimated)',
+                power: '600 hp (estimated)',
+                charging: 'DC Fast Charge: 200 kW+',
+                price: '$300,000+'
+            },
+            {
+                id: '67',
+                name: 'Dodge Charger Daytona',
+                image: 'https://placehold.co/400x250/f5f5f5/44403c?text=Charger+Daytona',
+                shortDescription: 'The iconic muscle car reimagined as an electric vehicle.',
+                longDescription: 'The Dodge Charger Daytona is the first all-electric muscle car, aiming to deliver the raw power and aggressive styling expected from a Charger while being powered by an electric drivetrain. It features a unique "Fratzog" logo and promises exhilarating acceleration and a distinct performance sound (simulated). The Charger Daytona seeks to maintain the muscle car spirit for the electric era, appealing to enthusiasts looking for a high-performance EV.',
+                range: '670 km (estimated)',
+                battery: '100.5 kWh',
+                power: 'Up to 670 hp',
+                charging: 'DC Fast Charge: 350 kW+',
+                price: '$60,000 (estimated)'
+            },
+            {
+                id: '68',
+                name: 'Abarth 500e',
+                image: 'https://placehold.co/400x250/fefce8/ca8a04?text=Abarth+500e',
+                shortDescription: 'A performance-tuned electric city car with a sporty character.',
+                longDescription: 'The Abarth 500e takes the charming Fiat 500e and infuses it with Abarth\'s signature performance-oriented tuning. It features a sportier suspension, upgraded brakes, and a more aggressive styling package. While still a city car, the Abarth 500e offers a more engaging and fun-to-drive experience with instant electric torque. It\'s designed for enthusiasts who want a small, agile, and spirited electric vehicle with a distinctive personality.',
+                range: '265 km (WLTP)',
+                battery: '42 kWh',
+                power: '155 hp',
+                charging: 'AC: 11 kW, DC Fast Charge: 85 kW',
+                price: '€38,000'
+            },
+            {
+                id: '69',
+                name: 'Dacia Spring Electric',
+                image: 'https://placehold.co/400x250/fff7ed/b45309?text=Dacia+Spring+EV',
+                shortDescription: 'Europe\'s most affordable electric car, focusing on accessibility.',
+                longDescription: 'The Dacia Spring Electric is positioned as one of the most affordable electric cars available in Europe, making EV ownership accessible to a broader audience. It\'s a compact and no-frills city car, prioritizing simplicity and functionality. The Spring Electric is ideal for urban commuting and shorter distances, offering basic features and a straightforward driving experience. It\'s a strong option for budget-conscious buyers looking for an entry-level EV.',
+                range: '230 km (WLTP)',
+                battery: '26.8 kWh',
+                power: '45 hp',
+                charging: 'AC: 7.4 kW (5 hrs), DC Fast Charge: 30 kW (0-80% in ~50 mins)',
+                price: '€20,000'
+            },
+            {
+                id: '70',
+                name: 'Renault Megane E-Tech Electric',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Megane+E-Tech',
+                shortDescription: 'A stylish and tech-filled electric hatchback from Renault.',
+                longDescription: 'The Renault Megane E-Tech Electric reimagines the popular Megane as a sleek and modern electric hatchback. It features a striking design, a high-tech interior with Google-powered infotainment, and a comfortable ride. Built on the CMF-EV platform, it offers a good balance of range and performance. The Megane E-Tech Electric aims to be a compelling mainstream electric vehicle, combining attractive styling with practical usability and advanced connectivity.',
+                range: '470 km (WLTP)',
+                battery: '60 kWh',
+                power: '220 hp',
+                charging: 'AC: 22 kW (3 hrs), DC Fast Charge: 130 kW (15-80% in ~30 mins)',
+                price: '€40,000'
+            },
+            {
+                id: '71',
+                name: 'BYD Dolphin',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=BYD+Dolphin',
+                shortDescription: 'A compact and affordable electric hatchback from BYD.',
+                longDescription: 'The BYD Dolphin is a compact electric hatchback designed for urban mobility, offering a competitive range and features at an attractive price point. It features a playful, marine-inspired design and a surprisingly spacious interior for its size. The Dolphin utilizes BYD\'s Blade Battery technology, emphasizing safety and efficiency. It\'s a practical and accessible option for city dwellers and those seeking an economical electric vehicle.',
+                range: '427 km (WLTP)',
+                battery: '60.48 kWh',
+                power: '201 hp',
+                charging: 'AC: 11 kW, DC Fast Charge: 88 kW (10-80% in ~40 mins)',
+                price: '€29,000'
+            },
+            {
+                id: '72',
+                name: 'Lotus Eletre',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=Lotus+Eletre',
+                shortDescription: 'Lotus\'s first electric hyper-SUV, focusing on performance and luxury.',
+                longDescription: 'The Lotus Eletre is a groundbreaking vehicle for the brand, marking its entry into the performance SUV segment with an all-electric powertrain. It blends Lotus\'s heritage of lightweight engineering and driving dynamics with the practicality and luxury of an SUV. The Eletre features a striking, aggressive design and a high-tech interior. It aims to deliver supercar-level performance in an SUV package, appealing to enthusiasts looking for an exhilarating electric SUV.',
+                range: '600 km (WLTP)',
+                battery: '112 kWh',
+                power: '603 hp - 905 hp',
+                charging: 'DC Fast Charge: 350 kW (10-80% in ~20 mins)',
+                price: '€95,900'
+            },
+            {
+                id: '73',
+                name: 'NIO ET5',
+                image: 'https://placehold.co/400x250/f0fdf4/047857?text=NIO+ET5',
+                shortDescription: 'A stylish electric sedan from NIO, with battery swap capability.',
+                longDescription: 'The NIO ET5 is a sleek and technologically advanced electric sedan, designed to compete in the premium EV segment. It features a minimalist yet sophisticated interior with a focus on smart technology and connectivity. A key highlight of NIO vehicles is their battery-swap capability, offering a quick alternative to traditional charging. The ET5 provides strong performance and a comfortable ride, appealing to tech-savvy buyers seeking an innovative EV with flexible energy solutions.',
+                range: '560 km (CLTC)',
+                battery: '75 kWh or 100 kWh',
+                power: '483 hp',
+                charging: 'AC: 11 kW, DC Fast Charge: 140 kW, Battery Swap',
+                price: '€50,000 (estimated, ex-battery)'
+            },
+            {
+                id: '74',
+                name: 'XPENG P7',
+                image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=XPENG+P7',
+                shortDescription: 'A smart electric sports sedan from China, focusing on tech.',
+                longDescription: 'The XPENG P7 is a smart electric sports sedan from the Chinese automaker, known for its sleek coupe-like design and advanced technology. It features a highly intelligent voice assistant, sophisticated driver-assistance systems, and an immersive audio experience. The P7 offers strong performance and a comfortable ride, positioning itself as a tech-forward alternative in the electric sedan market, particularly appealing to younger, digitally native consumers.',
+                range: '706 km (CLTC)',
+                battery: '82.7 kWh',
+                power: '276 hp (RWD) - 473 hp (AWD)',
+                charging: 'AC: 11 kW, DC Fast Charge: 100 kW',
+                price: '€49,000'
+            },
+            {
+                id: '75',
+                name: 'XPENG G9',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=XPENG+G9',
+                shortDescription: 'A luxurious and technologically advanced electric SUV from XPENG.',
+                longDescription: 'The XPENG G9 is a full-size electric SUV designed with luxury, comfort, and advanced technology in mind. It boasts a spacious and refined interior with premium materials, an advanced infotainment system, and features like air suspension for a smooth ride. The G9 offers impressive charging speeds and a long range, making it suitable for long journeys. It aims to compete with established luxury SUVs, providing a high-tech and comfortable electric driving experience.',
+                range: '702 km (CLTC)',
+                battery: '98 kWh',
+                power: '313 hp (RWD) - 551 hp (AWD)',
+                charging: 'AC: 11 kW, DC Fast Charge: 480 kW (10-80% in ~20 mins)',
+                price: '€60,000 (estimated)'
+            },
+            {
+                id: '76',
+                name: 'Canoo Lifestyle Vehicle',
+                image: 'https://placehold.co/400x250/fff7ed/b45309?text=Canoo+Lifestyle',
+                shortDescription: 'A unique, modular electric vehicle designed for various uses.',
+                longDescription: 'The Canoo Lifestyle Vehicle features a distinctive "lofty" design, prioritizing interior space and versatility. It\'s built on a modular electric platform, allowing for various configurations, from passenger transport to commercial uses. The vehicle emphasizes subscription-based ownership and a flexible interior layout. Its unconventional design and multi-purpose approach aim to redefine urban and personal mobility for the future, offering a highly adaptable electric solution.',
+                range: '400 km (estimated)',
+                battery: '80 kWh (estimated)',
+                power: '300 hp (estimated)',
+                charging: 'DC Fast Charge: Standard',
+                price: '$35,000 (estimated)'
+            },
+            {
+                id: '77',
+                name: 'Alpha Motor ACE Coupe',
+                image: 'https://placehold.co/400x250/f5f5f5/44403c?text=Alpha+ACE+Coupe',
+                shortDescription: 'A retro-inspired electric coupe with a focus on simplicity.',
+                longDescription: 'The Alpha Motor ACE Coupe is an electric vehicle concept that blends classic automotive design with modern EV technology. It features a sleek, minimalist retro design and promises an engaging driving experience. Alpha Motor emphasizes simplicity, durability, and customization for its vehicles. The ACE Coupe aims to appeal to enthusiasts who appreciate timeless design and desire a back-to-basics electric sports car.',
+                range: '400 km (estimated)',
+                battery: '85 kWh (estimated)',
+                power: 'Unspecified (estimated)',
+                charging: 'DC Fast Charge: Standard',
+                price: '$32,000 (estimated)'
+            },
+            {
+                id: '78',
+                name: 'Sony Honda Mobility Afeela',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Afeela+EV',
+                shortDescription: 'A tech-forward electric sedan from the Sony-Honda joint venture.',
+                longDescription: 'Afeela is the new brand born from the joint venture between Sony and Honda, aiming to create highly intelligent and entertainment-focused electric vehicles. The Afeela sedan concept features a minimalist design, a focus on software-defined features, and extensive use of sensors for advanced autonomous driving capabilities. It will integrate Sony\'s expertise in entertainment, gaming, and sensing technologies to offer a unique in-car experience, appealing to tech enthusiasts and early adopters.',
+                range: 'Unspecified',
+                battery: 'Unspecified',
+                power: 'Unspecified',
+                charging: 'High capacity',
+                price: 'Premium segment'
+            },
+            {
+                id: '79',
+                name: 'BYD Tang EV',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=BYD+Tang+EV',
+                shortDescription: 'A large electric SUV with a spacious 7-seat interior.',
+                longDescription: 'The BYD Tang EV is a large electric SUV available with a spacious seven-seat configuration, making it suitable for larger families. It offers a comfortable ride, a well-equipped interior, and utilizes BYD\'s Blade Battery technology. The Tang EV provides strong performance and a competitive range for its size. It\'s a compelling option for those seeking a practical, family-friendly, and value-oriented electric SUV.',
+                range: '530 km (WLTP)',
+                battery: '86.4 kWh or 108.8 kWh',
+                power: '509 hp (AWD)',
+                charging: 'AC: 7 kW, DC Fast Charge: 120 kW (10-80% in ~40 mins)',
+                price: '€69,900'
+            },
+            {
+                id: '80',
+                name: 'Lotus Emeya',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=Lotus+Emeya',
+                shortDescription: 'Lotus\'s first electric hyper-GT sedan, focusing on performance.',
+                longDescription: 'The Lotus Emeya is an all-electric hyper-GT sedan, designed to combine exhilarating performance with luxury and practicality. It features a sleek, aerodynamic design and a powerful dual-motor powertrain. The Emeya aims to deliver the sharp handling and dynamic capabilities expected from a Lotus, adapted for a four-door grand tourer format. It will appeal to performance enthusiasts looking for a high-end electric sedan with a strong focus on driving excitement.',
+                range: '600 km (WLTP)',
+                battery: '102 kWh',
+                power: '603 hp - 905 hp',
+                charging: 'DC Fast Charge: 350 kW',
+                price: '€100,000 (estimated)'
+            },
+            {
+                id: '81',
+                name: 'Volvo EX90',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Volvo+EX90',
+                shortDescription: 'Volvo\'s flagship electric 7-seat SUV, prioritizing safety and tech.',
+                longDescription: 'The Volvo EX90 is the brand\'s new flagship electric SUV, offering seating for seven and prioritizing safety, sustainability, and advanced technology. It features a clean, minimalist Scandinavian design and an interior crafted with sustainable materials. The EX90 is packed with advanced sensors, including LiDAR, to enhance its safety and future autonomous driving capabilities. It aims to deliver a supremely comfortable and secure family electric SUV experience.',
+                range: '600 km (WLTP)',
+                battery: '111 kWh (usable 107 kWh)',
+                power: '408 hp - 517 hp',
+                charging: 'AC: 11 kW, DC Fast Charge: 250 kW (10-80% in ~30 mins)',
+                price: '€85,000 (estimated)'
+            },
+            {
+                id: '82',
+                name: 'Volkswagen ID.7',
+                image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=VW+ID.7',
+                shortDescription: 'An electric executive sedan with a focus on range and comfort.',
+                longDescription: 'The Volkswagen ID.7 is an all-electric executive sedan designed to offer a long range, comfortable ride, and spacious interior. It features an aerodynamic fastback design and a minimalist dashboard with a large central touchscreen. The ID.7 aims to be a compelling electric alternative in the mid-size sedan segment, offering a refined driving experience and plenty of advanced technology for daily commuting and long-distance travel.',
+                range: '700 km (WLTP)',
+                battery: '86 kWh (usable 77 kWh)',
+                power: '286 hp',
+                charging: 'AC: 11 kW, DC Fast Charge: 200 kW (10-80% in ~28 mins)',
+                price: '€55,000 (estimated)'
+            },
+            {
+                id: '83',
+                name: 'Audi Q6 e-tron',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Audi+Q6+e-tron',
+                shortDescription: 'An upcoming premium electric SUV from Audi on the PPE platform.',
+                longDescription: 'The Audi Q6 e-tron is a highly anticipated premium electric SUV built on the new PPE (Premium Platform Electric) architecture, shared with the Porsche Macan EV. It is expected to offer a blend of sporty design, luxurious interior, and advanced technology. The Q6 e-tron will feature an 800V electrical architecture for rapid charging and promises strong performance. It aims to bridge the gap between the Q4 e-tron and Q8 e-tron, offering a highly capable and sophisticated electric SUV.',
+                range: '600 km (estimated)',
+                battery: '100 kWh (gross)',
+                power: 'Up to 483 hp',
+                charging: 'DC Fast Charge: 270 kW+',
+                price: '€65,000 (estimated)'
+            },
+            {
+                id: '84',
+                name: 'Mercedes-AMG EQE SUV',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=AMG+EQE+SUV',
+                shortDescription: 'The high-performance electric SUV from Mercedes-AMG.',
+                longDescription: 'The Mercedes-AMG EQE SUV brings the renowned performance of AMG to the electric SUV segment. It features a more aggressive styling, a sportier suspension setup, and a powerful dual-motor powertrain tuned for maximum exhilaration. The AMG EQE SUV delivers astonishing acceleration and dynamic handling, while still offering the luxury and technology expected from a Mercedes-Benz. It\'s for buyers who want an electric SUV that performs like a true sports car.',
+                range: '450 km (WLTP)',
+                battery: '90.6 kWh',
+                power: '617 hp (EQE 53 SUV) - 677 hp (with Dynamic Plus)',
+                charging: 'AC: 11 kW, DC Fast Charge: 170 kW',
+                price: '€120,000 (estimated)'
+            },
+            {
+                id: '85',
+                name: 'Genesis GV70 Electrified',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=Genesis+GV70+EV',
+                shortDescription: 'A premium electric SUV, blending style, comfort, and performance.',
+                longDescription: 'The Genesis Electrified GV70 is a sophisticated electric SUV that maintains the stylish design and luxurious interior of its gasoline counterpart. It offers a powerful all-electric powertrain with impressive acceleration and a smooth, quiet ride. The Electrified GV70 features advanced technology, including a boost mode for extra power, and supports ultra-fast charging. It provides a premium electric driving experience, combining Genesis\'s elegant design language with cutting-edge EV capabilities.',
+                range: '450 km (WLTP)',
+                battery: '77.4 kWh',
+                power: '429 hp (483 hp with Boost)',
+                charging: 'AC: 11 kW (7 hrs), DC Fast Charge: 350 kW (10-80% in ~18 mins)',
+                price: '€60,000'
+            },
+            {
+                id: '86',
+                name: 'Lexus UX 300e',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Lexus+UX+300e',
+                shortDescription: 'A compact luxury electric crossover from Lexus.',
+                longDescription: 'The Lexus UX 300e is a compact luxury electric crossover that offers a refined driving experience and a high-quality interior. It provides a comfortable ride and features Lexus\'s signature attention to detail and craftsmanship. While its range is modest compared to some newer EVs, it\'s well-suited for urban and suburban commuting. The UX 300e is aimed at buyers looking for a premium electric vehicle from a trusted luxury brand.',
+                range: '450 km (WLTP)',
+                battery: '72.8 kWh',
+                power: '201 hp',
+                charging: 'AC: 6.6 kW (11 hrs), DC Fast Charge: 50 kW (0-80% in ~60 mins)',
+                price: '€50,000'
+            },
+            {
+                id: '87',
+                name: 'Mazda MX-30',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=Mazda+MX-30',
+                shortDescription: 'A stylish electric compact SUV with unique freestyle doors.',
+                longDescription: 'The Mazda MX-30 is a compact electric SUV that stands out with its distinctive design, including unique "freestyle" (RX-8 style) doors. It offers a focus on sustainable materials in its interior and aims to provide a natural and engaging driving feel, true to Mazda\'s philosophy. While its range is modest, it\'s well-suited for urban and suburban driving for those who appreciate design and a refined driving experience.',
+                range: '200 km (WLTP)',
+                battery: '35.5 kWh',
+                power: '143 hp',
+                charging: 'AC: 6.6 kW (5 hrs), DC Fast Charge: 50 kW (0-80% in ~36 mins)',
+                price: '€35,000'
+            },
+            {
+                id: '88',
+                name: 'Opel Mokka-e',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=Opel+Mokka-e',
+                shortDescription: 'A stylish and compact electric SUV from Opel/Vauxhall.',
+                longDescription: 'The Opel Mokka-e (Vauxhall Mokka Electric in the UK) is a stylish and compact electric SUV that shares its platform with the Peugeot e-2008 and Citroën ë-C4. It features a bold, distinctive design and offers a practical and comfortable interior. The Mokka-e provides a smooth and quiet ride, making it a suitable option for urban driving and smaller families. It\'s an appealing choice for those seeking a fashionable and accessible electric SUV.',
+                range: '338 km (WLTP)',
+                battery: '50 kWh',
+                power: '136 hp',
+                charging: 'AC: 11 kW (5 hrs), DC Fast Charge: 100 kW (0-80% in ~30 mins)',
+                price: '€38,000'
+            },
+            {
+                id: '89',
+                name: 'Peugeot e-2008',
+                image: 'https://placehold.co/400x250/f0fdf4/047857?text=Peugeot+e-2008',
+                shortDescription: 'A compact electric SUV with stylish design and practical features.',
+                longDescription: 'The Peugeot e-2008 is an electric compact SUV that stands out with its distinctive, modern design and a well-appointed interior featuring Peugeot\'s i-Cockpit. It offers a comfortable ride, decent interior space, and a practical electric range for daily use. The e-2008 combines the versatility of an SUV with the benefits of electric mobility, appealing to those who want a stylish and functional EV.',
+                range: '330 km (WLTP)',
+                battery: '50 kWh',
+                power: '136 hp',
+                charging: 'AC: 11 kW (5 hrs), DC Fast Charge: 100 kW (0-80% in ~30 mins)',
+                price: '€39,000'
+            },
+            {
+                id: '90',
+                name: 'Honda e',
+                image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=Honda+e',
+                shortDescription: 'A charming and retro-styled urban electric car.',
+                longDescription: 'The Honda e is an exceptionally charming and retro-styled electric city car designed specifically for urban environments. It features a unique, minimalist interior with multiple screens and side cameras replacing traditional mirrors. While its range is limited, it excels in agility and maneuverability, making it perfect for city driving. The Honda e is a characterful and technologically advanced option for urbanites seeking a distinctive electric vehicle.',
+                range: '222 km (WLTP)',
+                battery: '35.5 kWh',
+                power: '154 hp',
+                charging: 'AC: 7.4 kW (5.5 hrs), DC Fast Charge: 100 kW (0-80% in ~30 mins)',
+                price: '€35,000'
+            },
+            {
+                id: '91',
+                name: 'Hyundai Nexo',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=Hyundai+Nexo',
+                shortDescription: 'A hydrogen fuel cell electric vehicle (FCEV) from Hyundai.',
+                longDescription: 'The Hyundai Nexo is a hydrogen fuel cell electric vehicle (FCEV), offering a different approach to zero-emission mobility. Instead of a battery, it generates electricity from hydrogen, producing only water as a byproduct. The Nexo offers a long range and quick refueling times, similar to gasoline cars, where hydrogen infrastructure is available. It\'s a comfortable SUV that showcases Hyundai\'s commitment to diverse clean energy solutions.',
+                range: '666 km (WLTP)',
+                battery: 'N/A (Fuel Cell)',
+                power: '161 hp',
+                charging: 'Refueling hydrogen in ~5 minutes',
+                price: 'Not widely available for sale to public, mainly for fleets'
+            },
+            {
+                id: '92',
+                name: 'Toyota Mirai',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=Toyota+Mirai',
+                shortDescription: 'Toyota\'s second-generation hydrogen fuel cell electric vehicle (FCEV).',
+                longDescription: 'The second-generation Toyota Mirai is a sleek and stylish hydrogen fuel cell electric vehicle (FCEV). It offers a long driving range and very fast refueling, similar to conventional gasoline cars, provided hydrogen fueling stations are accessible. The Mirai delivers a smooth and quiet ride, focusing on comfort and refinement. It represents Toyota\'s continued investment in hydrogen as a viable clean energy solution for future mobility.',
+                range: '650 km (WLTP)',
+                battery: 'N/A (Fuel Cell)',
+                power: '182 hp',
+                charging: 'Refueling hydrogen in ~5 minutes',
+                price: 'Not widely available for sale to public, mainly for fleets'
+            },
+            {
+                id: '93',
+                name: 'Volkswagen ID. Buzz',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=VW+ID.+Buzz',
+                shortDescription: 'A modern electric reimagining of the classic VW Microbus.',
+                longDescription: 'The Volkswagen ID. Buzz is an all-electric van that draws inspiration from the iconic T1 Microbus, blending retro charm with modern EV technology. It offers a spacious and versatile interior, ideal for families or commercial use. The ID. Buzz delivers a comfortable ride and features Volkswagen\'s latest infotainment and driver-assistance systems. It\'s a characterful and practical electric vehicle, appealing to those who appreciate its nostalgic design and spaciousness.',
+                range: '423 km (WLTP)',
+                battery: '82 kWh (usable 77 kWh)',
+                power: '204 hp',
+                charging: 'AC: 11 kW, DC Fast Charge: 170 kW (5-80% in ~30 mins)',
+                price: '€60,000'
+            },
+            {
+                id: '94',
+                name: 'Lightyear 0',
+                image: 'https://placehold.co/400x250/f0fdf4/047857?text=Lightyear+0',
+                shortDescription: 'A solar-powered electric car focused on extreme efficiency.',
+                longDescription: 'The Lightyear 0 is a groundbreaking solar electric vehicle designed for extreme efficiency and minimal charging needs. It features an incredibly aerodynamic design and integrates solar panels on its roof, hood, and trunk to generate energy. The Lightyear 0 aims to provide freedom from traditional charging infrastructure by continuously topping up its battery with solar power, offering a unique vision for sustainable long-distance electric travel.',
+                range: '625 km (WLTP) + solar',
+                battery: '60 kWh',
+                power: '174 hp',
+                charging: 'Solar charging + conventional AC/DC',
+                price: '€250,000 (limited production)'
+            },
+            {
+                id: '95',
+                name: 'Sono Sion',
+                image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=Sono+Sion',
+                shortDescription: 'A solar-integrated electric car focused on affordable sustainability (Project currently paused).',
+                longDescription: 'The Sono Sion was an ambitious project for an affordable solar-integrated electric car designed for everyday use. It featured solar panels integrated into its body, allowing for supplementary charging from the sun. The Sion aimed to be a practical and sustainable mobility solution, with features like bi-directional charging (Vehicle-to-Grid/Load). While the project is currently paused, it showcased innovative ideas for democratizing solar-electric transportation.',
+                range: '305 km (WLTP) + solar',
+                battery: '54 kWh',
+                power: '163 hp',
+                charging: 'Solar charging + conventional AC/DC',
+                price: '€25,000 (original target)'
+            },
+            {
+                id: '96',
+                name: 'XPENG G6',
+                image: 'https://placehold.co/400x250/f0f9ff/1d4ed8?text=XPENG+G6',
+                shortDescription: 'A sleek electric SUV-coupe with fast charging and advanced tech.',
+                longDescription: 'The XPENG G6 is an electric SUV-coupe designed to offer a blend of sporty aesthetics, impressive performance, and cutting-edge technology. It features a streamlined design and a high-tech interior with dual screens. The G6 boasts very fast charging capabilities and a long range, making it suitable for modern lifestyles. It aims to compete with popular electric SUVs, offering a strong value proposition with its advanced features and dynamic driving experience.',
+                range: '755 km (CLTC)',
+                battery: '87.5 kWh',
+                power: '286 hp (RWD) - 480 hp (AWD)',
+                charging: 'DC Fast Charge: 280 kW (10-80% in ~20 mins)',
+                price: '€40,000 (estimated)'
+            },
+            {
+                id: '97',
+                name: 'Zeekr 001',
+                image: 'https://placehold.co/400x250/ecfdf5/064e3b?text=Zeekr+001',
+                shortDescription: 'A premium electric shooting brake/liftback from Geely\'s brand.',
+                longDescription: 'The Zeekr 001 is a premium electric shooting brake (a blend of a station wagon and a coupe) from Geely\'s high-end EV brand, Zeekr. It offers a striking design, a luxurious and spacious interior, and impressive performance. The 001 features advanced technology, including sophisticated driver-assistance systems, and supports ultra-fast charging. It aims to deliver a compelling alternative in the premium EV segment, combining style, space, and power.',
+                range: '750 km (CLTC)',
+                battery: '100 kWh or 140 kWh',
+                power: '272 hp (RWD) - 544 hp (AWD)',
+                charging: 'DC Fast Charge: 360 kW (10-80% in ~30 mins)',
+                price: '€60,000'
+            },
+            {
+                id: '98',
+                name: 'NIO ET7',
+                image: 'https://placehold.co/400x250/eff6ff/1e3a8a?text=NIO+ET7',
+                shortDescription: 'NIO\'s flagship electric sedan, focusing on luxury and advanced tech.',
+                longDescription: 'The NIO ET7 is the brand\'s flagship electric sedan, designed to offer a premium luxury experience with cutting-edge technology and long-range capabilities. It features a sleek, aerodynamic design, a sophisticated interior with sustainable materials, and a powerful dual-motor powertrain. The ET7 is equipped with NIO Aquila Super Sensing system for advanced autonomous driving and supports battery swap technology. It aims to redefine the luxury EV segment with its innovation and service model.',
+                range: '1000 km (CLTC with 150 kWh battery)',
+                battery: '75 kWh, 100 kWh, or 150 kWh',
+                power: '644 hp',
+                charging: 'AC: 11 kW, DC Fast Charge: 140 kW, Battery Swap',
+                price: '€70,000 (estimated, ex-battery)'
+            },
+            {
+                id: '99',
+                name: 'Polestar 4',
+                image: 'https://placehold.co/400x250/f0fdf4/047857?text=Polestar+4',
+                shortDescription: 'An electric SUV coupe that ditches the rear window for a unique design.',
+                longDescription: 'The Polestar 4 is a distinctive electric SUV coupe that stands out with its radical design, notably the absence of a traditional rear window, replaced by a camera-based rear-view system. It offers a sleek, aerodynamic profile and a minimalist interior. The Polestar 4 promises strong performance and a competitive range, positioning itself as a bold and innovative choice in the electric SUV segment for those who appreciate avant-garde design and technology.',
+                range: '600 km (WLTP)',
+                battery: '102 kWh (usable 94 kWh)',
+                power: '272 hp (Single Motor) - 544 hp (Dual Motor)',
+                charging: 'AC: 22 kW, DC Fast Charge: 200 kW',
+                price: '€60,000 (estimated)'
+            },
+            {
+                id: '100',
+                name: 'Xiaomi SU7',
+                image: 'https://placehold.co/400x250/e0f2fe/0369a1?text=Xiaomi+SU7',
+                shortDescription: 'A high-tech electric sedan from the renowned electronics brand.',
+                longDescription: 'The Xiaomi SU7 marks the entry of the technology giant Xiaomi into the electric vehicle market with a sleek and high-performance sedan. It features a strong focus on smart technology, connectivity, and a seamlessly integrated digital ecosystem within the car. The SU7 promises impressive acceleration, a long range, and advanced driver-assistance systems, leveraging Xiaomi\'s expertise in consumer electronics to deliver a highly intelligent and user-friendly EV experience.',
+                range: '800 km (CLTC)',
+                battery: '101 kWh (CATL Qilin)',
+                power: '299 hp (RWD) - 673 hp (AWD)',
+                charging: 'DC Fast Charge: 800V architecture',
+                price: '€30,000 (estimated, for base)'
+            }
+        ];
+
+        const carListingsDiv = document.getElementById('carListings');
+        const infoModal = document.getElementById('infoModal'); // Renamed for general use
+        const modalContent = document.getElementById('modalContent');
+        const closeButton = document.querySelector('.close-button');
+
+        // Elements for Car Comparison
+        const selectedCarsDisplay = document.getElementById('selectedCarsDisplay');
+        const compareCarsBtn = document.getElementById('compareCarsBtn');
+        const clearComparisonBtn = document.getElementById('clearComparisonBtn');
+        const comparisonLoadingSpinner = document.getElementById('comparisonLoadingSpinner');
+        const comparisonErrorElem = document.getElementById('comparisonError');
+        let comparisonCars = []; // Array to hold selected cars for comparison
+
+        // Elements for Ask the EV AI
+        const aiQuestionInput = document.getElementById('aiQuestionInput');
+        const askAiBtn = document.getElementById('askAiBtn');
+        const aiResponseContainer = document.getElementById('aiResponseContainer');
+        const aiResponseText = document.getElementById('aiResponseText');
+        const aiLoadingSpinner = document.getElementById('aiLoadingSpinner');
+        const aiErrorElem = document.getElementById('aiError');
+
+        // Elements for Image Generation
+        const imagePromptInput = document.getElementById('imagePrompt');
+        const generateImageBtn = document.getElementById('generateImageBtn');
+        const generatedImageElem = document.getElementById('generatedImage');
+        const imageLoadingSpinner = document.getElementById('imageLoadingSpinner');
+        const imageErrorElem = document.getElementById('imageError');
+
+        // Function to create a car card
+        function createCarCard(car) {
+            const card = document.createElement('div');
+            card.className = 'car-card bg-white rounded-xl shadow-lg overflow-hidden flex flex-col items-center p-6 text-center';
+            card.innerHTML = `
+                <img src="${car.image}" alt="${car.name}" class="w-full h-40 object-cover rounded-lg mb-4 shadow-sm">
+                <h2 class="text-xl font-semibold text-gray-800 mb-2">${car.name}</h2>
+                <p class="text-gray-600 mb-4 flex-grow">${car.shortDescription}</p>
+                <div class="flex flex-col sm:flex-row gap-2 w-full justify-center">
+                    <button data-id="${car.id}" class="view-details-btn action-btn text-white font-semibold py-2 px-4 rounded-lg shadow-md">
+                        View Details
+                    </button>
+                    <button data-id="${car.id}" class="compare-btn action-btn bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md">
+                        Compare
+                    </button>
+                </div>
+            `;
+            return card;
+        }
+
+        // Function to update the comparison selection display and button states
+        function updateComparisonUI() {
+            selectedCarsDisplay.textContent = `Selected for comparison: ${comparisonCars.map(c => c.name).join(', ') || 'None'}`;
+            if (comparisonCars.length === 2) {
+                compareCarsBtn.disabled = false;
+                clearComparisonBtn.disabled = false;
+            } else {
+                compareCarsBtn.disabled = true;
+                clearComparisonBtn.disabled = false; // Allow clearing even with 0 or 1 car
+            }
+            if (comparisonCars.length === 0) {
+                clearComparisonBtn.disabled = true; // Disable clear if nothing selected
+                selectedCarsDisplay.textContent = 'Select up to 2 cars to compare.';
+            }
+
+            // Update individual card button states
+            document.querySelectorAll('.compare-btn').forEach(btn => {
+                const carId = btn.dataset.id;
+                if (comparisonCars.some(c => c.id === carId)) {
+                    btn.classList.add('selected');
+                    btn.textContent = 'Selected';
+                    if (comparisonCars.length === 2 && !comparisonCars.some(c => c.id === carId)) {
+                        btn.disabled = true; // Disable other buttons if 2 are already selected
+                    }
+                } else {
+                    btn.classList.remove('selected');
+                    btn.textContent = 'Compare';
+                    btn.disabled = false; // Enable all if less than 2 selected
+                }
+            });
+             if (comparisonCars.length === 2) {
+                document.querySelectorAll('.compare-btn:not(.selected)').forEach(btn => {
+                    btn.disabled = true;
+                });
+            }
+        }
+
+        // Function to display car details in the modal
+        function showInfoModal(title, content) {
+            modalContent.innerHTML = `
+                <h2 class="text-3xl font-bold text-gray-800 mb-4">${title}</h2>
+                <div>${content}</div>
+            `;
+            infoModal.classList.add('open');
+            infoModal.style.display = 'flex';
+        }
+
+        // --- Event Listeners ---
+
+        // Event listener for opening modal (View Details)
+        carListingsDiv.addEventListener('click', (event) => {
+            if (event.target.classList.contains('view-details-btn')) {
+                const carId = event.target.dataset.id;
+                const selectedCar = evCars.find(car => car.id === carId);
+                if (selectedCar) {
+                    const content = `
+                        <img src="${selectedCar.image}" alt="${selectedCar.name}" class="w-full max-h-64 object-cover rounded-lg mb-6 shadow-md">
+                        <p class="text-gray-700 mb-4 text-lg">${selectedCar.longDescription}</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700 text-base">
+                            <p><strong class="font-semibold text-gray-800">Estimated Range:</strong> ${selectedCar.range}</p>
+                            <p><strong class="font-semibold text-gray-800">Battery Capacity:</strong> ${selectedCar.battery}</p>
+                            <p><strong class="font-semibold text-gray-800">Power:</strong> ${selectedCar.power}</p>
+                            <p><strong class="font-semibold text-gray-800">Charging Details:</strong> ${selectedCar.charging}</p>
+                            <p><strong class="font-semibold text-gray-800">Estimated Price:</strong> ${selectedCar.price}</p>
+                        </div>
+                    `;
+                    showInfoModal(selectedCar.name, content);
+                }
+            } else if (event.target.classList.contains('compare-btn')) {
+                const carId = event.target.dataset.id;
+                const car = evCars.find(c => c.id === carId);
+
+                const existingIndex = comparisonCars.findIndex(c => c.id === carId);
+
+                if (existingIndex !== -1) {
+                    // Car is already in comparison, remove it
+                    comparisonCars.splice(existingIndex, 1);
+                } else if (comparisonCars.length < 2) {
+                    // Add car if less than 2 are selected
+                    comparisonCars.push(car);
+                } else {
+                    // Already 2 cars selected, inform user
+                    showInfoModal('Comparison Limit', 'You can only select up to 2 cars for comparison. Please clear your selection to choose new cars.');
+                }
+                updateComparisonUI();
+            }
+        });
+
+        // Event listener for closing modal
+        closeButton.addEventListener('click', () => {
+            infoModal.classList.remove('open');
+            setTimeout(() => {
+                infoModal.style.display = 'none';
+            }, 200); // Allow time for transition
+        });
+
+        infoModal.addEventListener('click', (event) => {
+            if (event.target === infoModal) {
+                infoModal.classList.remove('open');
+                setTimeout(() => {
+                    infoModal.style.display = 'none';
+                }, 200);
+            }
+        });
+
+        // --- Car Comparison Feature Logic ---
+
+        clearComparisonBtn.addEventListener('click', () => {
+            comparisonCars = [];
+            updateComparisonUI();
+        });
+
+        compareCarsBtn.addEventListener('click', async () => {
+            if (comparisonCars.length !== 2) {
+                comparisonErrorElem.textContent = 'Please select exactly two cars to compare.';
+                comparisonErrorElem.classList.remove('hidden');
+                return;
+            }
+
+            comparisonErrorElem.classList.add('hidden');
+            comparisonLoadingSpinner.style.display = 'block'; // Show spinner
+            compareCarsBtn.disabled = true; // Disable button during API call
+
+            const car1 = comparisonCars[0];
+            const car2 = comparisonCars[1];
+
+            const prompt = `Compare the following two electric vehicles, highlighting their key similarities and differences in terms of range, battery, power, charging, and overall character. Provide a concise summary.
+
+            Car 1:
+            Name: ${car1.name}
+            Range: ${car1.range}
+            Battery: ${car1.battery}
+            Power: ${car1.power}
+            Charging: ${car1.charging}
+            Price: ${car1.price}
+            Description: ${car1.longDescription}
+
+            Car 2:
+            Name: ${car2.name}
+            Range: ${car2.range}
+            Battery: ${car2.battery}
+            Power: ${car2.power}
+            Charging: ${car2.charging}
+            Price: ${car2.price}
+            Description: ${car2.longDescription}
+            `;
+
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // Canvas will automatically provide this at runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            let attempts = 0;
+            const maxAttempts = 5;
+            const baseDelay = 1000; // 1 second
+
+            let comparisonResult = '';
+
+            while (attempts < maxAttempts) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        comparisonResult = result.candidates[0].content.parts[0].text;
+                        break; // Exit loop on success
+                    } else {
+                        throw new Error('AI comparison failed: Invalid response structure.');
+                    }
+                } catch (error) {
+                    console.error('AI comparison error:', error);
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        const delay = baseDelay * Math.pow(2, attempts - 1); // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        comparisonErrorElem.textContent = 'Failed to generate comparison after multiple attempts. Please try again later.';
+                        comparisonErrorElem.classList.remove('hidden');
+                        break; // Exit loop after max attempts
+                    }
+                }
+            }
+
+            comparisonLoadingSpinner.style.display = 'none'; // Hide spinner
+            compareCarsBtn.disabled = false; // Re-enable button
+
+            if (comparisonResult) {
+                showInfoModal(`Comparison: ${car1.name} vs ${car2.name}`, `<p class="whitespace-pre-wrap">${comparisonResult}</p>`);
+            }
+        });
+
+
+        // --- Ask the EV AI Feature Logic ---
+
+        askAiBtn.addEventListener('click', async () => {
+            const question = aiQuestionInput.value.trim();
+            if (!question) {
+                aiErrorElem.textContent = 'Please enter a question to ask the AI.';
+                aiErrorElem.classList.remove('hidden');
+                aiResponseContainer.classList.add('hidden');
+                return;
+            }
+
+            aiErrorElem.classList.add('hidden');
+            aiResponseText.textContent = '';
+            aiResponseContainer.classList.remove('hidden');
+            aiLoadingSpinner.style.display = 'block'; // Show spinner
+            askAiBtn.disabled = true; // Disable button during API call
+
+            const prompt = `You are an expert on electric vehicles. Answer the following question about EVs comprehensively but concisely. Question: "${question}"`;
+
+            let chatHistory = [{ role: "user", parts: [{ text: prompt }] }];
+            const payload = { contents: chatHistory };
+            const apiKey = ""; // Canvas will automatically provide this at runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            let attempts = 0;
+            const maxAttempts = 5;
+            const baseDelay = 1000; // 1 second
+
+            let aiAnswer = '';
+
+            while (attempts < maxAttempts) {
+                try {
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json();
+                    if (result.candidates && result.candidates.length > 0 &&
+                        result.candidates[0].content && result.candidates[0].content.parts &&
+                        result.candidates[0].content.parts.length > 0) {
+                        aiAnswer = result.candidates[0].content.parts[0].text;
+                        break; // Exit loop on success
+                    } else {
+                        throw new Error('AI response failed: Invalid response structure.');
+                    }
+                } catch (error) {
+                    console.error('Ask EV AI error:', error);
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        const delay = baseDelay * Math.pow(2, attempts - 1); // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        aiErrorElem.textContent = 'Failed to get a response from AI after multiple attempts. Please try again later.';
+                        aiErrorElem.classList.remove('hidden');
+                        aiResponseContainer.classList.remove('hidden'); // Ensure container is visible for error
+                        aiResponseText.textContent = ''; // Clear previous text
+                        break; // Exit loop after max attempts
+                    }
+                }
+            }
+
+            aiLoadingSpinner.style.display = 'none'; // Hide spinner
+            askAiBtn.disabled = false; // Re-enable button
+
+            if (aiAnswer) {
+                aiResponseText.textContent = aiAnswer;
+            }
+        });
+
+
+        // --- Image Generation Logic (Existing) ---
+        generateImageBtn.addEventListener('click', async () => {
+            const prompt = imagePromptInput.value.trim();
+            if (!prompt) {
+                imageErrorElem.textContent = 'Please enter a prompt to generate an image.';
+                imageErrorElem.classList.remove('hidden');
+                generatedImageElem.classList.add('hidden');
+                return;
+            }
+
+            imageErrorElem.classList.add('hidden');
+            generatedImageElem.classList.add('hidden');
+            imageLoadingSpinner.style.display = 'block'; // Show spinner
+
+            let attempts = 0;
+            const maxAttempts = 5;
+            const baseDelay = 1000; // 1 second
+
+            while (attempts < maxAttempts) {
+                try {
+                    const payload = {
+                        instances: { prompt: prompt },
+                        parameters: { "sampleCount": 1 }
+                    };
+                    const apiKey = ""; // Canvas will automatically provide this at runtime
+                    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API error: ${response.status} ${response.statusText} - ${errorData.error?.message || 'Unknown error'}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                        const imageUrl = `data:image/png;base64,${result.predictions[0].bytesBase64Encoded}`;
+                        generatedImageElem.src = imageUrl;
+                        generatedImageElem.classList.remove('hidden');
+                        imageLoadingSpinner.style.display = 'none'; // Hide spinner
+                        break; // Exit loop on success
+                    } else {
+                        throw new Error('Image generation failed: Invalid response structure.');
+                    }
+                } catch (error) {
+                    console.error('Image generation error:', error);
+                    attempts++;
+                    if (attempts < maxAttempts) {
+                        const delay = baseDelay * Math.pow(2, attempts - 1); // Exponential backoff
+                        await new Promise(resolve => setTimeout(resolve, delay));
+                    } else {
+                        imageErrorElem.textContent = 'Failed to generate image after multiple attempts. Please try again later.';
+                        imageErrorElem.classList.remove('hidden');
+                        imageLoadingSpinner.style.display = 'none'; // Hide spinner
+                    }
+                }
+            }
+        });
+
+        // --- Initial Population ---
+        // Populate the car listings on load
+        evCars.forEach(car => {
+            carListingsDiv.appendChild(createCarCard(car));
+        });
+        updateComparisonUI(); // Initialize comparison UI state
+    </script>
+</body>
+</html>
